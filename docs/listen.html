@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SFX Desk — example sounds</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; font-family: Segoe UI, system-ui, sans-serif;
+      background: #0b1220; color: #e8eef6;
+      max-width: 720px; margin-inline: auto; padding: 28px 20px 64px;
+    }
+    h1 { font-size: 1.4rem; margin: 0 0 6px; }
+    .sub { color: #9aa8b8; margin: 0 0 22px; font-size: .95rem; }
+    .card {
+      background: #121a26; border: 1px solid #223044; border-radius: 12px;
+      padding: 14px 16px 16px; margin-bottom: 12px;
+    }
+    .card h2 { font-size: 1.02rem; margin: 0 0 4px; }
+    .meta { color: #8ea0b3; font-size: .82rem; margin: 0 0 10px; }
+    audio { width: 100%; }
+    a { color: #7eb6ff; }
+  </style>
+</head>
+<body>
+  <h1>SFX Desk — example sounds</h1>
+  <p class="sub">Local SA3 Small-SFX gens. GitHub’s README often won’t play <code>&lt;audio&gt;</code>; this page will.</p>
+
+  <div class="card">
+    <h2>1. Organic rumble</h2>
+    <p class="meta">Type: rumble · Tex: organic · Space: hall · Speed: fast · 8s</p>
+    <audio controls preload="metadata" src="examples/rumble.mp3"></audio>
+  </div>
+  <div class="card">
+    <h2>2. Metallic faller</h2>
+    <p class="meta">Type: faller · Tex: metallic · Space: outdoor · Speed: slow · 12s</p>
+    <audio controls preload="metadata" src="examples/faller.mp3"></audio>
+  </div>
+  <div class="card">
+    <h2>3. Distorted impact</h2>
+    <p class="meta">Type: impact · Tex: distorted · Space: distant · Speed: medium · 6s</p>
+    <audio controls preload="metadata" src="examples/impact.mp3"></audio>
+  </div>
+  <div class="card">
+    <h2>4. Cinematic swoosh</h2>
+    <p class="meta">Type: swoosh · Tex: cinematic · Space: roomy · Speed: fast · 5s</p>
+    <audio controls preload="metadata" src="examples/swoosh.mp3"></audio>
+  </div>
+  <div class="card">
+    <h2>5. Sharp scrape</h2>
+    <p class="meta">Type: scrape · Tex: sharp · Space: dry · Speed: slow · 8s</p>
+    <audio controls preload="metadata" src="examples/scrape.mp3"></audio>
+  </div>
+  <div class="card">
+    <h2>6. Digital ambience</h2>
+    <p class="meta">Type: ambience · Tex: digital · Space: hall · Speed: medium · 6s</p>
+    <audio controls preload="metadata" src="examples/ambience.mp3"></audio>
+  </div>
+</body>
+</html>

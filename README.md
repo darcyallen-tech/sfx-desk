@@ -22,7 +22,11 @@ SA3 Small-SFX is the daily driver (~2-4 GB VRAM). MOSS is optional and wants ~16
 
 ## Example sounds
 
-Local **SA3 Small-SFX** gens from this desk. Use the players below (fallback download links under each).
+Local **SA3 Small-SFX** gens from this desk.
+
+**Play them here:** [SFX Desk example sounds](https://darcyallen-tech.github.io/sfx-desk/) (GitHub Pages — real audio players).
+
+GitHub's README often won't render <audio> reliably; use the Pages link above. Download links remain below as backup.
 
 ### 1. Organic rumble (8s)
 Type: rumble | Tex: organic | Space: hall | Speed: fast

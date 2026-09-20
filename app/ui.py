@@ -12,12 +12,15 @@ from app.engines.base import empty_cuda_cache, moss_vram_status, probe_vram
 from app.generate import DEFAULT_STEPS, generate_sfx, unload_all
 from app.library import SfxLibrary
 from app.prompt_builder import (
+    INTENSITIES,
+    MICS,
     SPEEDS,
     SPACES,
     TEXTURES,
     TYPES,
     build_prompt,
     default_negative_prompt,
+    migrate_space_mic,
 )
 from app import settings as prefs
 from app.setup_check import SA3_LICENSE_URL, check_setup
@@ -40,8 +43,8 @@ ENGINE_KEYS = {
 
 FAT_MIN = (300, 420)
 SKINNY_MIN = (300, 280)
-FAT_SIZE = "340x560"
-SKINNY_SIZE = "340x320"
+FAT_SIZE = "340x635"
+SKINNY_SIZE = "340x405"
 
 
 class SfxDeskApp(ctk.CTk):
@@ -155,7 +158,9 @@ class SfxDeskApp(ctk.CTk):
             ("Type", "kind", TYPES, "whoosh"),
             ("Tex", "texture", TEXTURES, "airy"),
             ("Space", "space", SPACES, "dry"),
+            ("Mic", "mic", MICS, "natural"),
             ("Speed", "speed", SPEEDS, "fast"),
+            ("Power", "intensity", INTENSITIES, "medium"),
         ]
         for i, (label, attr, values, default) in enumerate(specs):
             r, c = divmod(i, 2)
@@ -170,6 +175,17 @@ class SfxDeskApp(ctk.CTk):
             setattr(self, attr, menu)
         grid.columnconfigure(0, weight=1)
         grid.columnconfigure(1, weight=1)
+
+        extra_row = ctk.CTkFrame(self, fg_color="transparent")
+        extra_row.pack(fill="x", padx=6, pady=(1, 2))
+        ctk.CTkLabel(extra_row, text="Extra", font=tiny, width=40).pack(side="left")
+        self.extra = ctk.CTkEntry(
+            extra_row,
+            placeholder_text="optional detail, e.g. glass debris trail",
+            height=26,
+        )
+        self.extra.pack(side="left", fill="x", expand=True, padx=(4, 4))
+        self.extra.bind("<KeyRelease>", lambda _evt: self._sync_prompt())
 
         dur = ctk.CTkFrame(self, fg_color="transparent")
         dur.pack(fill="x", padx=6, pady=2)
@@ -259,16 +275,32 @@ class SfxDeskApp(ctk.CTk):
 
     def _apply_saved_builder(self) -> None:
         cfg = self._cfg
-        for attr, key, choices in (
-            ("kind", "kind", TYPES),
-            ("texture", "texture", TEXTURES),
-            ("space", "space", SPACES),
-            ("speed", "speed", SPEEDS),
+        saved_space, saved_mic = migrate_space_mic(
+            str(cfg.get("space", "dry")), str(cfg.get("mic", "natural"))
+        )
+        saved_values = {
+            "kind": str(cfg.get("kind", "")),
+            "texture": str(cfg.get("texture", "")),
+            "space": saved_space,
+            "mic": saved_mic,
+            "speed": str(cfg.get("speed", "")),
+            "intensity": str(cfg.get("intensity", "medium")),
+        }
+        for attr, choices in (
+            ("kind", TYPES),
+            ("texture", TEXTURES),
+            ("space", SPACES),
+            ("mic", MICS),
+            ("speed", SPEEDS),
+            ("intensity", INTENSITIES),
         ):
-            val = str(cfg.get(key, ""))
+            val = saved_values.get(attr, "")
             widget = getattr(self, attr)
             if val in choices:
                 widget.set(val)
+        extra = str(cfg.get("extra", ""))
+        if extra:
+            self.extra.insert(0, extra)
         try:
             dur = float(cfg.get("duration", 4.0))
         except (TypeError, ValueError):
@@ -381,7 +413,10 @@ class SfxDeskApp(ctk.CTk):
             "kind": self.kind.get(),
             "texture": self.texture.get(),
             "space": self.space.get(),
+            "mic": self.mic.get(),
             "speed": self.speed.get(),
+            "intensity": self.intensity.get(),
+            "extra": self.extra.get().strip(),
             "category": self.cat.get(),
             "fav_only": bool(self.fav_only.get()),
         }
@@ -491,7 +526,10 @@ class SfxDeskApp(ctk.CTk):
             self.texture.get(),
             self.space.get(),
             self.speed.get(),
+            extra=self.extra.get().strip(),
             engine=self._engine_key(),
+            mic=self.mic.get(),
+            intensity=self.intensity.get(),
         )
         self.prompt.delete("1.0", "end")
         self.prompt.insert("1.0", p)
