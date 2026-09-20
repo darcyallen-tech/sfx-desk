@@ -136,7 +136,7 @@ SFX Desk quietly checks [GitHub Releases](https://github.com/darcyallen-tech/sfx
 |--------|------|------|
 | **SA3 Small-SFX** (default) | ~2â€“4 GB | Daily driver â€” fine with Resolve open |
 | **MOSS-SoundEffect v2** | ~13â€“14 GB alone | Optional quality; see VRAM rules |
-| **Woosh DFlow** | ~10 GB+ | Distilled T2A (4 steps); CC BY-NC weights |
+| **Woosh DFlow / Woosh Flow** | ~10 GB+ | Distilled T2A (4 steps); CC BY-NC weights |
 
 ### MOSS VRAM (plain English)
 

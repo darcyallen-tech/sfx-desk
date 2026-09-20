@@ -16,6 +16,7 @@ from app.engines.base import (
     moss_vram_status,
     probe_vram,
     woosh_vram_status,
+    woosh_flow_vram_status,
 )
 from app.generate import DEFAULT_CFG, DEFAULT_STEPS, generate_sfx, unload_all, unload_gguf_server, unload_torch_engines
 from app.library import SfxLibrary
@@ -46,12 +47,14 @@ ENGINE_LABELS = [
     "SA3 Small-SFX",
     "MOSS v2",
     "Woosh DFlow",
+    "Woosh Flow",
 ]
 ENGINE_KEYS = {
     "SA3 Small-SFX": "sa3",
     "MOSS v2": "moss",
     "MOSS GGUF (SLOWER)": "moss_gguf",
     "Woosh DFlow": "woosh_dflow",
+    "Woosh Flow": "woosh_flow",
 }
 
 FAT_MIN = (300, 420)
@@ -74,6 +77,7 @@ class SfxDeskApp(ctk.CTk):
         self.library = SfxLibrary()
         self.always_on_top = tk.BooleanVar(value=bool(self._cfg.get("always_on_top", True)))
         self.keep_loaded = tk.BooleanVar(value=bool(self._cfg.get("keep_loaded", True)))
+        self.batch_count = tk.IntVar(value=int(self._cfg.get("batch_count", 1) or 1))
         self.fav_only = tk.BooleanVar(value=bool(self._cfg.get("fav_only", False)))
         self.auto_send = tk.BooleanVar(value=bool(self._cfg.get("auto_send", False)))
         self.skinny = tk.BooleanVar(value=bool(self._cfg.get("skinny", False)))
@@ -82,6 +86,7 @@ class SfxDeskApp(ctk.CTk):
         self._moss = moss_vram_status(force_enable=bool(self.moss_force.get()), info=self._vram_info)
         self._gguf = moss_gguf_vram_status(force_enable=False, info=self._vram_info)
         self._woosh = woosh_vram_status(force_enable=False, info=self._vram_info)
+        self._woosh_flow = woosh_flow_vram_status(force_enable=False, info=self._vram_info)
         self.selected_id: int | None = None
         self.last_wav: Path | None = None
         self.busy = False
@@ -248,6 +253,16 @@ class SfxDeskApp(ctk.CTk):
             actions, text="Generate", width=90, height=28, command=self._on_generate
         )
         self.gen_btn.pack(side="left", padx=2)
+        ctk.CTkLabel(actions, text="Batch", font=tiny, width=40).pack(side="left", padx=(8, 2))
+        self.batch_menu = ctk.CTkOptionMenu(
+            actions,
+            values=[str(i) for i in range(1, 9)],
+            width=52,
+            height=28,
+            command=lambda v: self.batch_count.set(int(v)),
+        )
+        self.batch_menu.set(str(max(1, min(8, int(self.batch_count.get() or 1)))))
+        self.batch_menu.pack(side="left", padx=2)
         ctk.CTkButton(actions, text="Play", width=56, height=28, command=self._play_last).pack(
             side="left", padx=2
         )
@@ -450,6 +465,7 @@ class SfxDeskApp(ctk.CTk):
             "skinny": bool(self.skinny.get()),
             "engine": self.engine.get(),
             "keep_loaded": bool(self.keep_loaded.get()),
+            "batch_count": max(1, min(8, int(self.batch_count.get() or 1))),
             "always_on_top": bool(self.always_on_top.get()),
             "auto_send": bool(self.auto_send.get()),
             "moss_force_enable": bool(self.moss_force.get()),
@@ -562,6 +578,7 @@ class SfxDeskApp(ctk.CTk):
         )
         self._gguf = moss_gguf_vram_status(force_enable=False, info=self._vram_info)
         self._woosh = woosh_vram_status(force_enable=False, info=self._vram_info)
+        self._woosh_flow = woosh_flow_vram_status(force_enable=False, info=self._vram_info)
         try:
             if self._moss["enough"]:
                 self.moss_force_cb.pack_forget()
@@ -629,8 +646,17 @@ class SfxDeskApp(ctk.CTk):
         if key == "woosh_dflow" and not getattr(self, "_woosh", {}).get("unlocked", True):
             messagebox.showwarning(
                 "SFX Desk",
-                "Woosh DFlow needs ~10 GB VRAM.\n\n"
+                "Woosh DFlow needs ~6 GB VRAM.\n\n"
                 f"{getattr(self, '_woosh', {}).get('tip', '')}",
+            )
+            self.engine.set(ENGINE_LABELS[0])
+            self._sync_prompt()
+            return
+        if key == "woosh_flow" and not getattr(self, "_woosh_flow", {}).get("unlocked", True):
+            messagebox.showwarning(
+                "SFX Desk",
+                "Woosh Flow needs ~10 GB VRAM.\n\n"
+                f"{getattr(self, '_woosh_flow', {}).get('tip', '')}",
             )
             self.engine.set(ENGINE_LABELS[0])
             self._sync_prompt()
@@ -648,7 +674,12 @@ class SfxDeskApp(ctk.CTk):
         elif key == "woosh_dflow":
             tip = getattr(self, "_woosh", {}).get(
                 "tip",
-                "Woosh DFlow: distilled T2A, 4 steps, free-text prompts.",
+                "Woosh DFlow: distilled T2A, 4 steps, free-text prompts (~6 GB).",
+            )
+        elif key == "woosh_flow":
+            tip = getattr(self, "_woosh_flow", {}).get(
+                "tip",
+                "Woosh Flow: full T2A, 50 steps, CFG 4.5 (~10–12 GB).",
             )
         else:
             tip = "SA3: ~1s gens, light VRAM. Fine with Resolve open."
@@ -734,8 +765,15 @@ class SfxDeskApp(ctk.CTk):
         if engine == "woosh_dflow" and not getattr(self, "_woosh", {}).get("unlocked", True):
             messagebox.showwarning(
                 "SFX Desk",
-                "Woosh DFlow is locked - needs ~10 GB VRAM.\n"
+                "Woosh DFlow is locked - needs ~6 GB VRAM.\n"
                 "Use SA3 Small-SFX for fast gens.",
+            )
+            return
+        if engine == "woosh_flow" and not getattr(self, "_woosh_flow", {}).get("unlocked", True):
+            messagebox.showwarning(
+                "SFX Desk",
+                "Woosh Flow is locked - needs ~10 GB VRAM.\n"
+                "Use Woosh DFlow (~6 GB) or SA3 Small-SFX.",
             )
             return
         keep = bool(self.keep_loaded.get())
@@ -752,7 +790,7 @@ class SfxDeskApp(ctk.CTk):
             except Exception as e:  # noqa: BLE001
                 self._set_status(f"Torch unload warning: {e}")
             self.update_idletasks()
-        elif engine == "woosh_dflow":
+        elif engine in ("woosh_dflow", "woosh_flow"):
             # Stop GGUF server only when one is actually up (avoids taskkill CMD flash).
             try:
                 from app.engines import moss_gguf
@@ -765,30 +803,52 @@ class SfxDeskApp(ctk.CTk):
 
         self.busy = True
         self.gen_btn.configure(state="disabled")
-        self._set_status("Generating...")
+        batch_n = max(1, min(8, int(self.batch_count.get() or 1)))
+        self._set_status("Generating..." if batch_n == 1 else f"Batch 1/{batch_n}…")
 
         def work() -> None:
             import time as _time
+            import random as _random
 
-            t0 = _time.perf_counter()
+            last_clip = None
+            last_elapsed = None
             try:
-                def cb(m: str) -> None:
-                    self.after(0, lambda msg=m: self._set_status(msg))
+                for i in range(batch_n):
+                    def cb(m: str, _i=i) -> None:
+                        prefix = "" if batch_n == 1 else f"Batch {_i + 1}/{batch_n}… "
+                        self.after(0, lambda msg=m, p=prefix: self._set_status(p + msg))
 
-                wav = generate_sfx(
-                    prompt,
-                    seconds=seconds,
-                    steps=steps,
-                    cfg_scale=cfg_scale,
-                    negative_prompt=default_negative_prompt(),
-                    engine=engine,
-                    keep_loaded=keep,
-                    status_cb=cb,
-                )
-                elapsed = _time.perf_counter() - t0
-                clip = self.library.add_clip(wav, prompt, category, duration=seconds, gen_elapsed=elapsed)
-                self.last_wav = Path(clip["path"])
-                self.after(0, lambda: self._after_generate(clip, elapsed))
+                    if batch_n > 1:
+                        self.after(
+                            0,
+                            lambda _i=i: self._set_status(f"Batch {_i + 1}/{batch_n}…"),
+                        )
+                    seed = _random.randint(0, 2**31 - 1)
+                    # Keep engine warm across the whole batch; unload only after last
+                    # item when Keep is off.
+                    keep_this = True if (keep or i < batch_n - 1) else False
+                    t0 = _time.perf_counter()
+                    wav = generate_sfx(
+                        prompt,
+                        seconds=seconds,
+                        steps=steps,
+                        cfg_scale=cfg_scale,
+                        negative_prompt=default_negative_prompt(),
+                        engine=engine,
+                        keep_loaded=keep_this,
+                        status_cb=cb,
+                        seed=seed,
+                    )
+                    elapsed = _time.perf_counter() - t0
+                    clip = self.library.add_clip(
+                        wav, prompt, category, duration=seconds, gen_elapsed=elapsed
+                    )
+                    last_clip = clip
+                    last_elapsed = elapsed
+                    self.last_wav = Path(clip["path"])
+                    # Refresh library after each seed so rows appear live
+                    self.after(0, self._refresh_library)
+                self.after(0, lambda: self._after_generate(last_clip, last_elapsed, batch_n=batch_n))
             except Exception as e:  # noqa: BLE001
                 self.after(0, lambda err=e: self._generate_failed(err))
 
@@ -814,16 +874,23 @@ class SfxDeskApp(ctk.CTk):
         mins, rem = divmod(total, 60)
         return f"{mins}m {rem}s"
 
-    def _after_generate(self, clip: dict, elapsed: float | None = None) -> None:
+    def _after_generate(self, clip: dict, elapsed: float | None = None, batch_n: int = 1) -> None:
         self.busy = False
         self.gen_btn.configure(state="normal")
         kept = "kept loaded" if self.keep_loaded.get() else "unloaded"
+        if clip is None:
+            self._set_status("Generate finished")
+            return
         if elapsed is None:
-            self._set_status(f"Saved: {clip.get('filename')} ({kept})")
+            suffix = f"Saved: {clip.get('filename')} ({kept})"
         else:
-            self._set_status(
+            suffix = (
                 f"Saved: {clip.get('filename')} in {self._format_elapsed(elapsed)} ({kept})"
             )
+        if batch_n > 1:
+            self._set_status(f"Batch {batch_n}/{batch_n} done — {suffix}")
+        else:
+            self._set_status(suffix)
         self._refresh_library()
         self._play_path(clip["path"])
         if self.auto_send.get():

@@ -147,6 +147,10 @@ def build_prompt(
     mic: str = "natural",
     intensity: str = "medium",
 ) -> str:
+    """Build a Prompty-style caption for the active engine.
+
+    Shared dropdown axes for every model — only the sentence template changes.
+    """
     kind = (kind or "whoosh").strip().lower()
     texture = (texture or "airy").strip().lower()
     speed = (speed or "medium").strip().lower()
@@ -155,34 +159,41 @@ def build_prompt(
     engine = (engine or "moss").strip().lower()
     space, mic = migrate_space_mic(space, mic)
 
-    if engine == "sa3":
-        space_bit = SPACE_SA3.get(space, space)
-        mic_bit = MIC_SA3.get(mic, mic)
-        speed_bit = SPEED_SA3.get(speed, speed)
-        intensity_bit = INTENSITY_SA3.get(intensity, intensity)
-        prompt = (
-            f"TrackType: SFX, a {intensity_bit} {texture} {kind}, {speed_bit}, "
-            f"{space_bit}, {mic_bit}, clear foley one-shot, no music, no speech"
-        )
-        if extra:
-            prompt = f"{prompt}, {extra}"
-        return prompt
+    woosh_intensity = {
+        "soft": "gentle",
+        "medium": "medium",
+        "hard": "punchy",
+        "brutal": "massive",
+    }.get(intensity, intensity)
 
-    space_bit = SPACE_PHRASE.get(space, space)
-    mic_bit = MIC_PHRASE.get(mic, mic)
-    speed_bit = SPEED_PHRASE.get(speed, speed)
-    intensity_bit = INTENSITY_PHRASE.get(intensity, intensity)
-    # Article agrees with the word that follows it (intensity phrase), not kind.
-    # Fixes "an punchy…" when kind is vowel-initial (impact/ambience) but intensity is not.
-    lead = (intensity_bit or texture or kind).strip().split()[0].lower()
-    article = "an" if lead[:1] in "aeiou" else "a"
-    prompt = (
-        f"{article} {intensity_bit} {texture} {kind}, {speed_bit}, {space_bit}, "
-        f"{mic_bit}, clear sound design, no speech"
-    )
+    if engine == "sa3":
+        lead = (intensity or texture or kind).strip().split()[0].lower()
+        article = "an" if lead[:1] in "aeiou" else "a"
+        prompt = (
+            f"TrackType: SFX, {article} {intensity}-weight {texture} {kind}, "
+            f"{speed}, {space}, {mic} microphone, clear foley one-shot, "
+            "no music, no speech"
+        )
+    elif engine in ("woosh_dflow", "woosh_flow"):
+        if intensity and intensity != "medium":
+            prompt = (
+                f"{kind}, {texture}, {woosh_intensity}, {speed}, {space}, {mic} mic"
+            )
+        else:
+            prompt = f"{kind}, {texture}, {speed}, {space}, {mic} mic"
+    else:
+        # moss / moss_gguf
+        lead = (intensity or texture or kind).strip().split()[0].lower()
+        article = "an" if lead[:1] in "aeiou" else "a"
+        prompt = (
+            f"{article} {intensity} {texture} {kind}, {speed}, in a {space}, "
+            f"{mic} microphone distance, clear sound design, no speech"
+        )
+
     if extra:
         prompt = f"{prompt}, {extra}"
     return prompt
+
 
 
 def default_negative_prompt() -> str:

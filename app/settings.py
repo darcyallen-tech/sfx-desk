@@ -21,6 +21,7 @@ DEFAULTS: dict[str, Any] = {
     "moss_gguf_port": 8765,
     "woosh_models_root": "",
     "duration": 4.0,
+    "batch_count": 1,
     "kind": "whoosh",
     "texture": "airy",
     "space": "dry",
@@ -36,7 +37,7 @@ DEFAULTS: dict[str, Any] = {
     "last_update_check": "",
 }
 
-_ENGINE_ALLOWLIST = ("SA3 Small-SFX", "MOSS v2", "Woosh DFlow")
+_ENGINE_ALLOWLIST = ("SA3 Small-SFX", "MOSS v2", "Woosh DFlow", "Woosh Flow")
 
 
 def _sanitize_geometry(value: str, fallback: str) -> str:

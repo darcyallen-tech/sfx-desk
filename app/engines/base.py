@@ -63,7 +63,8 @@ def save_wav_soundfile(path: Path, audio, sample_rate: int = 48000) -> None:
 MOSS_MIN_VRAM_GB = 16.0
 MOSS_COMFORT_VRAM_GB = 24.0
 GGUF_MIN_VRAM_GB = 12.0
-WOOSH_MIN_VRAM_GB = 10.0
+WOOSH_MIN_VRAM_GB = 6.0
+WOOSH_FLOW_MIN_VRAM_GB = 10.0
 
 
 def probe_vram() -> dict:
@@ -184,7 +185,7 @@ def moss_gguf_vram_status(force_enable: bool = False, info: dict | None = None) 
 
 
 def woosh_vram_status(force_enable: bool = False, info: dict | None = None) -> dict:
-    """Whether Woosh DFlow should be offered. Needs ~10 GB free-ish; 16 GB card OK."""
+    """Whether Woosh DFlow should be offered. Peak ~6 GB; 16 GB card OK."""
     info = info if info is not None else probe_vram()
     total = float(info.get("total_gb") or 0.0)
     enough = bool(info.get("ok")) and round(total) >= int(WOOSH_MIN_VRAM_GB)
@@ -208,4 +209,32 @@ def woosh_vram_status(force_enable: bool = False, info: dict | None = None) -> d
         "forced": bool(force_enable) and not enough,
         "tip": tip,
         "min_gb": WOOSH_MIN_VRAM_GB,
+    }
+
+
+def woosh_flow_vram_status(force_enable: bool = False, info: dict | None = None) -> dict:
+    """Whether Woosh Flow should be offered. Soft gate ~10 GB; 16 GB card OK."""
+    info = info if info is not None else probe_vram()
+    total = float(info.get("total_gb") or 0.0)
+    enough = bool(info.get("ok")) and round(total) >= int(WOOSH_FLOW_MIN_VRAM_GB)
+    unlocked = enough or bool(force_enable)
+    if not info.get("cuda"):
+        tip = "Woosh Flow needs an NVIDIA GPU. Use SA3 Small-SFX."
+    elif not enough and not force_enable:
+        tip = (
+            f"Woosh Flow needs ~{WOOSH_FLOW_MIN_VRAM_GB:.0f} GB VRAM (you have {total:.1f} GB). "
+            "Try Woosh DFlow (~6 GB) or SA3."
+        )
+    else:
+        tip = (
+            f"Woosh Flow OK at {total:.1f} GB — full T2A (50 steps, CFG 4.5). "
+            "Free-text prompts; Unload frees VRAM. Weights: CC BY-NC 4.0."
+        )
+    return {
+        "info": info,
+        "enough": enough,
+        "unlocked": unlocked,
+        "forced": bool(force_enable) and not enough,
+        "tip": tip,
+        "min_gb": WOOSH_FLOW_MIN_VRAM_GB,
     }

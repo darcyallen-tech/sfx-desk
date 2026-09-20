@@ -1,6 +1,14 @@
 # Changelog
 
+## 1.2.0
+
+- **Woosh Flow** full T2A engine (50 steps, CFG 4.5, renoise 0.0). Soft VRAM gate ~10 GB; unloads DFlow when loading Flow and vice versa.
+- **Woosh DFlow tip/gate** lowered to **~6 GB** (matches measured ~6 GB peak).
+- **Prompt builder switch**: Prompty-style templates per engine (SA3 / MOSS / Woosh) with shared dropdown axes.
+- **Batch N seeds** (1–8): Generate runs N times with different seeds, keeps the engine warm across the batch, unloads only after the last item when Keep is off; each result gets its own library row and `Batch 2/4…` status.
+
 ## 1.1.5
+
 
 - Fix Woosh pre-gen CMD flash + 1-2s stutter: skip `taskkill` when moss-tts-server is not running, and pass `CREATE_NO_WINDOW` when a kill is needed.
 - Woosh generate path only calls GGUF unload when `server_active()` is true.

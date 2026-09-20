@@ -13,11 +13,12 @@ ENGINES = {
     "sa3": "Stable Audio 3 Small-SFX (light VRAM)",
     "moss_gguf": "MOSS-SoundEffect GGUF (slower, ~12GB+)",
     "woosh_dflow": "Woosh DFlow (distilled T2A)",
+    "woosh_flow": "Woosh Flow (full T2A)",
 }
 
 # Default steps per engine
-DEFAULT_STEPS = {"moss": 50, "sa3": 8, "moss_gguf": 12, "woosh_dflow": 4}
-DEFAULT_CFG = {"moss": 4.0, "sa3": 1.0, "moss_gguf": 4.0, "woosh_dflow": 4.0}
+DEFAULT_STEPS = {"moss": 50, "sa3": 8, "moss_gguf": 12, "woosh_dflow": 4, "woosh_flow": 50}
+DEFAULT_CFG = {"moss": 4.0, "sa3": 1.0, "moss_gguf": 4.0, "woosh_dflow": 4.0, "woosh_flow": 4.5}
 
 
 def unload_torch_engines() -> str:
@@ -45,6 +46,12 @@ def unload_torch_engines() -> str:
         msgs.append(woosh_dflow.unload())
     except Exception as e:  # noqa: BLE001
         msgs.append(f"Woosh unload: {e}")
+    try:
+        from app.engines import woosh_flow
+
+        msgs.append(woosh_flow.unload())
+    except Exception as e:  # noqa: BLE001
+        msgs.append(f"Woosh Flow unload: {e}")
     msgs.append(empty_cuda_cache())
     return " | ".join(msgs)
 
@@ -79,6 +86,12 @@ def unload_all() -> str:
         msgs.append(woosh_dflow.unload())
     except Exception as e:  # noqa: BLE001
         msgs.append(f"Woosh unload: {e}")
+    try:
+        from app.engines import woosh_flow
+
+        msgs.append(woosh_flow.unload())
+    except Exception as e:  # noqa: BLE001
+        msgs.append(f"Woosh Flow unload: {e}")
     msgs.append(unload_gguf_server())
     msgs.append(empty_cuda_cache())
     return " | ".join(msgs)
@@ -93,6 +106,7 @@ def generate_sfx(
     engine: str = "moss",
     keep_loaded: bool = True,
     status_cb: StatusCb = None,
+    seed: int | None = None,
 ) -> Path:
     engine = (engine or "moss").strip().lower()
     if engine not in ENGINES:
@@ -106,6 +120,16 @@ def generate_sfx(
     def status(msg: str) -> None:
         if status_cb:
             status_cb(msg)
+
+    if seed is not None and int(seed) >= 0:
+        try:
+            import torch
+
+            torch.manual_seed(int(seed))
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(int(seed))
+        except Exception:
+            pass
 
     try:
         if engine == "moss":
@@ -144,6 +168,20 @@ def generate_sfx(
                 cfg_scale=float(cfg_scale),
                 negative_prompt=negative_prompt,
                 status_cb=status_cb,
+                seed=seed,
+            )
+        elif engine == "woosh_flow":
+            from app.engines import woosh_flow
+
+            path = woosh_flow.generate(
+                prompt,
+                seconds=seconds,
+                steps=int(steps),
+                cfg_scale=float(cfg_scale),
+                negative_prompt=negative_prompt,
+                status_cb=status_cb,
+                seed=seed,
+                renoise=0.0,
             )
         else:
             from app.engines import sa3_sfx

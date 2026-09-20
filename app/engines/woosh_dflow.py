@@ -115,6 +115,17 @@ def _load(status: StatusCb = None):
     if _MODEL is not None:
         return _MODEL
 
+    # Mutual exclusion with full Flow (same AE/conditioner VRAM)
+    try:
+        from app.engines import woosh_flow
+
+        if woosh_flow.is_loaded():
+            if status:
+                status("Unloading Woosh Flow before DFlow...")
+            woosh_flow.unload()
+    except Exception:
+        pass
+
     def status_msg(msg: str) -> None:
         if status:
             status(msg)
@@ -162,6 +173,7 @@ def generate(
     cfg_scale: float = 4.0,
     negative_prompt: str = "",  # noqa: ARG001 — DFlow has no neg prompt path
     status_cb: StatusCb = None,
+    seed: int | None = None,
 ) -> Path:
     """Generate a WAV via distilled FlowMap Euler (default 4 steps)."""
     import torch
@@ -194,6 +206,10 @@ def generate(
         f"{steps} steps, cfg={cfg:g})..."
     )
 
+    if seed is not None and int(seed) >= 0:
+        torch.manual_seed(int(seed))
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(int(seed))
     noise = torch.randn(1, LATENT_CHANNELS, frames, device=device)
     cond = model.get_cond(
         {"audio": None, "description": [prompt]},
