@@ -6,7 +6,13 @@ Always-on-top desktop SFX generator for **DaVinci Resolve** (free or Studio).
 
 > **Donate (PayPal):** https://www.paypal.com/donate/?business=B8KD4347C4F9L&no_recurring=0&currency_code=CAD
 
-Supported path for v1: **Windows + NVIDIA CUDA**.
+## Requirements
+
+- **OS:** Windows
+- **GPU:** **NVIDIA** with a recent driver (CUDA). This is the only supported path for v1.
+- **Not supported:** AMD GPUs, Intel Arc, Mac, CPU-only (too slow for the engines we ship).
+
+SA3 Small-SFX is the daily driver (~2-4 GB VRAM). MOSS is optional and wants ~16 GB+ (see Engines below).
 
 ---
 
