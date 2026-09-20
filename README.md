@@ -2,7 +2,7 @@
 
 Always-on-top desktop SFX generator for **DaVinci Resolve** (free or Studio).
 
-**Local GPU in. Media Pool out.** Generate on your NVIDIA box, audition in the floating desk, **Send** straight into a Resolve bin — no cloud plugin, no browser download, no drag-from-Downloads. Built for editors who want AI SFX without leaving the cut.
+**Local GPU in. Media Pool out.** Generate on your NVIDIA box, audition in the floating desk, **Send** straight into a Resolve bin - no cloud plugin, no browser download, no drag-from-Downloads. Built for editors who want AI SFX without leaving the cut.
 
 Cloud-in-Resolve SFX panels exist (Mirelo, Kolbo, stock libraries). This is the other lane: **offline-capable local gen + companion UI + scripting Send**, MIT, free Resolve friendly.
 
