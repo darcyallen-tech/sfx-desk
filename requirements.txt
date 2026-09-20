@@ -1,0 +1,12 @@
+﻿# SFX Desk — core UI + audio I/O (install AFTER torch — see scripts/setup_windows.bat)
+customtkinter>=5.2.0
+Pillow>=10.0.0
+numpy>=1.26.0,<2.1
+soundfile>=0.12.1
+sounddevice>=0.4.6
+huggingface_hub>=0.24.0
+
+# SA3 Small-SFX (default engine). Gated weights — you must accept the license
+# and log in with YOUR Hugging Face account (browser or token). Never commit a token.
+# Installed by setup_windows.bat from:
+#   pip install "stable-audio-3 @ git+https://github.com/Stability-AI/stable-audio-3.git"

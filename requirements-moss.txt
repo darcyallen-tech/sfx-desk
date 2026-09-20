@@ -1,0 +1,3 @@
+﻿# Optional MOSS-SoundEffect v2 (heavy / ~16 GB VRAM).
+# Prefer the official MOSS-TTS moss_soundeffect_v2 env, or follow SETUP.md.
+# Not installed by default — SA3 is the daily driver.

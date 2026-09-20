@@ -1,0 +1,44 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Local data / user machine
+library/
+*.db
+*.wav
+*.mp3
+*.flac
+sfx_desk.log
+settings.json
+%USERPROFILE%/
+
+# Secrets / credentials — NEVER commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+hf_token*
+.huggingface/
+token
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Scratch / local-only
+_write_scaffold.py
+_patch_*.py
+*.local.md
