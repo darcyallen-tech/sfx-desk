@@ -2,11 +2,12 @@
 
 ## 1.1.4
 
-- **Woosh DFlow** distilled T2A engine (free-text, 4 steps, CFG ~4). Peak ~6.3 GB VRAM on RTX 5070 Ti; cold ~12–16s, warm well under the 60s hard limit.
-- **MOSS GGUF removed from the engine picker** (module kept for now) — warm gens were 5–6+ minutes.
-- Weights: `AEmotionStudio/woosh-models` under `%USERPROFILE%\woosh-models\checkpoints\` (AE + TextConditionerA + DFlow). CC BY-NC 4.0 on weights.
-- Helpers: `scripts\setup_woosh.bat`, `scripts\download_woosh_weights.bat`, `scripts\smoke_woosh_dflow.py`.
+- **Woosh DFlow** distilled T2A engine (free-text, 4 steps, CFG ~4). Peak ~6.3 GB VRAM on RTX 5070 Ti; cold ~12-16s, warm well under the 60s hard limit.
+- **MOSS GGUF removed from the engine picker** (module kept for now) -- warm gens were 5-6+ minutes.
+- Weights: `AEmotionStudio/woosh-models` under `%USERPROFILE%/woosh-models/checkpoints/` (AE + TextConditionerA + DFlow). CC BY-NC 4.0 on weights.
+- Helpers: `scripts/setup_woosh.bat`, `scripts/download_woosh_weights.bat`, `scripts/smoke_woosh_dflow.py`.
 - SA3 remains default.
+
 
 ## 1.1.3
 
