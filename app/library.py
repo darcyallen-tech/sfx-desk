@@ -35,10 +35,14 @@ class SfxLibrary:
                     category TEXT NOT NULL,
                     duration REAL,
                     favorite INTEGER DEFAULT 0,
-                    created_at REAL NOT NULL
+                    created_at REAL NOT NULL,
+                    gen_elapsed REAL
                 )
                 """
             )
+            cols = {row[1] for row in conn.execute("PRAGMA table_info(clips)")}
+            if "gen_elapsed" not in cols:
+                conn.execute("ALTER TABLE clips ADD COLUMN gen_elapsed REAL")
 
     def category_dir(self, category: str) -> Path:
         d = self.lib_dir / category
@@ -51,6 +55,7 @@ class SfxLibrary:
         prompt: str,
         category: str,
         duration: float | None = None,
+        gen_elapsed: float | None = None,
     ) -> dict[str, Any]:
         category = (category or "misc").strip().lower()
         dest_dir = self.category_dir(category)
@@ -63,10 +68,12 @@ class SfxLibrary:
         with self._connect() as conn:
             cur = conn.execute(
                 """
-                INSERT INTO clips (filename, path, prompt, category, duration, favorite, created_at)
-                VALUES (?, ?, ?, ?, ?, 0, ?)
+                INSERT INTO clips (
+                    filename, path, prompt, category, duration, favorite, created_at, gen_elapsed
+                )
+                VALUES (?, ?, ?, ?, ?, 0, ?, ?)
                 """,
-                (filename, str(dest), prompt, category, duration, created),
+                (filename, str(dest), prompt, category, duration, created, gen_elapsed),
             )
             row_id = int(cur.lastrowid)
         return self.get(row_id)

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.3
+
+- Persist generation elapsed time on each library clip (`gen_elapsed`); library rows show ` - in 1.2s` / `in 12s` / `in 5m 51s` when known (older clips omit the suffix)
+- Status + library share the same elapsed formatter (<10s one decimal; 10–59s whole seconds; ≥60s minutes)
+- Fix MOSS prompt article: use a/an from the intensity phrase that follows (no more `an punchy…` when type is vowel-initial)
+
 ## 1.1.2
 
 - **Fix hard crash (0xC0000005)** on MOSS GGUF Generate: unload SA3/MOSS and clear CUDA on the UI thread before the GGUF worker; never call torch.cuda / empty CUDA cache from the GGUF worker while moss-tts-server owns the GPU

@@ -740,7 +740,7 @@ class SfxDeskApp(ctk.CTk):
                     status_cb=cb,
                 )
                 elapsed = _time.perf_counter() - t0
-                clip = self.library.add_clip(wav, prompt, category, duration=seconds)
+                clip = self.library.add_clip(wav, prompt, category, duration=seconds, gen_elapsed=elapsed)
                 self.last_wav = Path(clip["path"])
                 self.after(0, lambda: self._after_generate(clip, elapsed))
             except Exception as e:  # noqa: BLE001
@@ -749,30 +749,34 @@ class SfxDeskApp(ctk.CTk):
         threading.Thread(target=work, daemon=True).start()
 
     def _format_elapsed(self, seconds: float) -> str:
-        if seconds < 1:
-            return f"{seconds * 1000:.0f} ms"
+        """Human elapsed for status + library rows.
+
+        <10s → one decimal (1.2s); 10–59s → whole seconds (12s); ≥60s → 5m 51s.
+        """
+        seconds = float(seconds)
         if seconds < 10:
-            return f"{seconds:.2f}s"
+            rounded = round(seconds, 1)
+            if rounded < 10:
+                return f"{rounded:.1f}s"
+            seconds = rounded
         if seconds < 60:
-            return f"{seconds:.1f}s"
-        mins = int(seconds // 60)
-        rem = seconds - mins * 60
-        return f"{mins}m {rem:.0f}s"
+            whole = int(round(seconds))
+            if whole < 60:
+                return f"{whole}s"
+            seconds = float(whole)
+        total = int(round(seconds))
+        mins, rem = divmod(total, 60)
+        return f"{mins}m {rem}s"
 
     def _after_generate(self, clip: dict, elapsed: float | None = None) -> None:
         self.busy = False
         self.gen_btn.configure(state="normal")
         kept = "kept loaded" if self.keep_loaded.get() else "unloaded"
         if elapsed is None:
-
             self._set_status(f"Saved: {clip.get('filename')} ({kept})")
-
         else:
-
             self._set_status(
-
                 f"Saved: {clip.get('filename')} in {self._format_elapsed(elapsed)} ({kept})"
-
             )
         self._refresh_library()
         self._play_path(clip["path"])
@@ -794,10 +798,15 @@ class SfxDeskApp(ctk.CTk):
         self.listbox.delete(0, tk.END)
         for row in self.clip_rows:
             star = "* " if row.get("favorite") else ""
-            self.listbox.insert(
-                tk.END,
-                f"{star}[{row['category']}] {row['filename']} - {str(row.get('prompt', ''))[:40]}",
-            )
+            snippet = str(row.get("prompt", ""))[:40]
+            label = f"{star}[{row['category']}] {row['filename']} - {snippet}"
+            gen_elapsed = row.get("gen_elapsed")
+            if gen_elapsed is not None:
+                try:
+                    label = f"{label} - in {self._format_elapsed(float(gen_elapsed))}"
+                except (TypeError, ValueError):
+                    pass
+            self.listbox.insert(tk.END, label)
 
     def _selected_rows(self) -> list[dict]:
         sel = self.listbox.curselection()

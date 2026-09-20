@@ -167,11 +167,14 @@ def build_prompt(
             prompt = f"{prompt}, {extra}"
         return prompt
 
-    article = "an" if kind[:1] in "aeiou" else "a"
     space_bit = SPACE_PHRASE.get(space, space)
     mic_bit = MIC_PHRASE.get(mic, mic)
     speed_bit = SPEED_PHRASE.get(speed, speed)
     intensity_bit = INTENSITY_PHRASE.get(intensity, intensity)
+    # Article agrees with the word that follows it (intensity phrase), not kind.
+    # Fixes "an punchy…" when kind is vowel-initial (impact/ambience) but intensity is not.
+    lead = (intensity_bit or texture or kind).strip().split()[0].lower()
+    article = "an" if lead[:1] in "aeiou" else "a"
     prompt = (
         f"{article} {intensity_bit} {texture} {kind}, {speed_bit}, {space_bit}, "
         f"{mic_bit}, clear sound design, no speech"
