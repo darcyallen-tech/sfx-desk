@@ -198,8 +198,22 @@ class SfxDeskApp(ctk.CTk):
         self.duration_lbl = ctk.CTkLabel(dur, text="4.0s", width=40, font=tiny)
         self.duration_lbl.pack(side="left", padx=(0, 4))
 
-        self.prompt = ctk.CTkTextbox(self, height=44)
-        self.prompt.pack(fill="x", padx=6, pady=2)
+        prompt_h = int(self._cfg.get("prompt_height", 72))
+        prompt_h = max(44, min(280, prompt_h))
+        self.prompt = ctk.CTkTextbox(self, height=prompt_h)
+        self.prompt.pack(fill="x", padx=6, pady=(2, 0))
+        self._prompt_height = prompt_h
+
+        # Drag grip to resize prompt box height
+        self._prompt_grip = ctk.CTkFrame(self, height=8, cursor="sb_v_double_arrow", fg_color="#2a3444")
+        self._prompt_grip.pack(fill="x", padx=10, pady=(0, 2))
+        self._prompt_grip.pack_propagate(False)
+        grip_bar = ctk.CTkFrame(self._prompt_grip, height=2, width=36, fg_color="#6a7a90")
+        grip_bar.place(relx=0.5, rely=0.5, anchor="center")
+        for w in (self._prompt_grip, grip_bar):
+            w.bind("<ButtonPress-1>", self._prompt_resize_start)
+            w.bind("<B1-Motion>", self._prompt_resize_drag)
+            w.bind("<ButtonRelease-1>", self._prompt_resize_end)
 
         actions = ctk.CTkFrame(self, fg_color="transparent")
         actions.pack(fill="x", padx=6, pady=2)
@@ -417,6 +431,7 @@ class SfxDeskApp(ctk.CTk):
             "speed": self.speed.get(),
             "intensity": self.intensity.get(),
             "extra": self.extra.get().strip(),
+            "prompt_height": int(getattr(self, "_prompt_height", 72)),
             "category": self.cat.get(),
             "fav_only": bool(self.fav_only.get()),
         }
@@ -520,7 +535,28 @@ class SfxDeskApp(ctk.CTk):
     def _apply_topmost(self) -> None:
         self.attributes("-topmost", bool(self.always_on_top.get()))
 
+    def _prompt_resize_start(self, event) -> None:
+        self._prompt_resize_y = event.y_root
+        self._prompt_resize_h = int(self.prompt.winfo_height())
+
+    def _prompt_resize_drag(self, event) -> None:
+        if not hasattr(self, "_prompt_resize_y"):
+            return
+        dy = event.y_root - self._prompt_resize_y
+        new_h = max(44, min(280, self._prompt_resize_h + dy))
+        if abs(new_h - getattr(self, "_prompt_height", 0)) < 2:
+            return
+        self._prompt_height = new_h
+        self.prompt.configure(height=new_h)
+
+    def _prompt_resize_end(self, _event=None) -> None:
+        try:
+            self._prompt_height = max(44, min(280, int(self.prompt.winfo_height())))
+        except Exception:
+            pass
+
     def _sync_prompt(self) -> None:
+
         p = build_prompt(
             self.kind.get(),
             self.texture.get(),
