@@ -4,7 +4,7 @@ Always-on-top desktop SFX generator for **DaVinci Resolve** (free or Studio).
 
 **Free and open source (MIT).** No price tag. If you want to support development:
 
-> **Donate (PayPal):** _add your PayPal.me link here_
+> **Donate (PayPal):** https://www.paypal.com/donate/?business=B8KD4347C4F9L&no_recurring=0&currency_code=CAD
 
 Supported path for v1: **Windows + NVIDIA CUDA**.
 
@@ -66,3 +66,4 @@ Everyone brings their own HF account and accepts Stability’s license themselve
 
 MIT — see [LICENSE](LICENSE).  
 Third-party models (SA3, MOSS) have their **own** licenses; you must accept those on Hugging Face.
+
