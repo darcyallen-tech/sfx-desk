@@ -15,7 +15,7 @@ ENGINES = {
 }
 
 # Default steps per engine
-DEFAULT_STEPS = {"moss": 50, "sa3": 8, "moss_gguf": 20}
+DEFAULT_STEPS = {"moss": 50, "sa3": 8, "moss_gguf": 12}
 DEFAULT_CFG = {"moss": 4.0, "sa3": 1.0, "moss_gguf": 4.0}
 
 
@@ -77,6 +77,21 @@ def generate_sfx(
             )
         elif engine == "moss_gguf":
             from app.engines import moss_gguf
+
+            # Free torch engine VRAM before the GGUF server claims the GPU —
+            # contested VRAM is a common cause of moss-tts-server dying mid-/sfx.
+            status("Freeing SA3/MOSS VRAM for GGUF...")
+            try:
+                from app.engines import moss as _moss
+                _moss.unload()
+            except Exception:
+                pass
+            try:
+                from app.engines import sa3_sfx as _sa3
+                _sa3.unload()
+            except Exception:
+                pass
+            empty_cuda_cache()
 
             path = moss_gguf.generate(
                 prompt,

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1
+
+- Harden MOSS GGUF: free SA3/MOSS VRAM before gen, single-flight lock, stderr log, one automatic restart/retry on connection reset
+- Default GGUF steps 12 (faster/safer); clearer mid-decode crash errors
+
 ## 1.1.0
 
 - Optional **MOSS GGUF (SLOWER)** engine (~12 GB VRAM) via openmoss `moss-tts-server`

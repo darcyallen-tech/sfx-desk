@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -20,6 +21,9 @@ DEFAULT_ROOT = Path.home() / "moss-gguf-test"
 
 _PROC: subprocess.Popen | None = None
 _BASE_URL: str | None = None
+_LOCK = threading.Lock()
+_GEN_LOCK = threading.Lock()
+_ERR_LOG = DEFAULT_ROOT / "sfxdesk-server.err.log"
 
 
 class MossGgufUnavailable(RuntimeError):
@@ -63,7 +67,7 @@ def resolve_server_exe() -> Path:
             return p
     raise MossGgufUnavailable(
         f"{SERVER_EXE} not found. Put the openmoss Windows CUDA build at "
-        f"{DEFAULT_ROOT}\\runtime\\{SERVER_EXE}, or set moss_gguf_server / "
+        f"{DEFAULT_ROOT}\\\\runtime\\\\{SERVER_EXE}, or set moss_gguf_server / "
         "SFX_DESK_MOSS_GGUF_SERVER."
     )
 
@@ -84,7 +88,7 @@ def resolve_model() -> Path:
             return p
     raise MossGgufUnavailable(
         f"{MODEL_NAME} not found. Download from Hugging Face "
-        f"(ilintar/moss-soundeffect-gguf), place under {DEFAULT_ROOT}\\weights\\, "
+        f"(ilintar/moss-soundeffect-gguf), place under {DEFAULT_ROOT}\\\\weights\\\\, "
         "or set moss_gguf_model / SFX_DESK_MOSS_GGUF_MODEL."
     )
 
@@ -121,10 +125,8 @@ def is_loaded() -> bool:
     return health_ok()
 
 
-def unload() -> str:
-    """Stop moss-tts-server so VRAM frees (Unload button)."""
-    global _PROC, _BASE_URL
-    msgs: list[str] = []
+def _kill_servers() -> None:
+    global _PROC
     if _PROC is not None and _PROC.poll() is None:
         try:
             _PROC.terminate()
@@ -132,9 +134,8 @@ def unload() -> str:
                 _PROC.wait(timeout=5)
             except Exception:
                 _PROC.kill()
-            msgs.append("MOSS GGUF server stopped")
-        except Exception as e:  # noqa: BLE001
-            msgs.append(f"MOSS GGUF stop: {e}")
+        except Exception:
+            pass
         _PROC = None
     try:
         subprocess.run(
@@ -144,80 +145,98 @@ def unload() -> str:
             timeout=10,
             check=False,
         )
-        msgs.append(f"taskkill {SERVER_EXE}")
-    except Exception as e:  # noqa: BLE001
-        msgs.append(f"taskkill: {e}")
-    _BASE_URL = None
-    return " | ".join(msgs) if msgs else "MOSS GGUF not running"
+    except Exception:
+        pass
 
 
-def ensure_server(status_cb: StatusCb = None) -> str:
+def unload() -> str:
+    """Stop moss-tts-server so VRAM frees (Unload button)."""
+    global _BASE_URL
+    with _LOCK:
+        _kill_servers()
+        _BASE_URL = None
+    return "MOSS GGUF server stopped"
+
+
+def ensure_server(status_cb: StatusCb = None, *, force_restart: bool = False) -> str:
     global _PROC, _BASE_URL
     port = resolve_port()
     base = f"http://{DEFAULT_HOST}:{port}"
-    if health_ok(base):
-        _BASE_URL = base
-        return base
 
     def status(msg: str) -> None:
         if status_cb:
             status_cb(msg)
 
-    server = resolve_server_exe()
-    model = resolve_model()
-    status(f"Starting MOSS GGUF server ({server.name})...")
-    creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    env = os.environ.copy()
-    env["PATH"] = str(server.parent) + os.pathsep + env.get("PATH", "")
-    _PROC = subprocess.Popen(
-        [
-            str(server),
-            "--model",
-            str(model),
-            "--host",
-            DEFAULT_HOST,
-            "--port",
-            str(port),
-            "--n-gpu-layers",
-            "-1",
-        ],
-        cwd=str(server.parent),
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        creationflags=creationflags,
-    )
-    deadline = time.time() + 180
-    while time.time() < deadline:
-        if _PROC.poll() is not None:
-            raise MossGgufUnavailable(
-                f"moss-tts-server exited early (code {_PROC.returncode}). "
-                "Check model path and CUDA DLLs beside the exe."
-            )
-        if health_ok(base, timeout=1.5):
+    with _LOCK:
+        if not force_restart and health_ok(base):
             _BASE_URL = base
-            status("MOSS GGUF server ready")
             return base
-        time.sleep(1.0)
-    raise MossGgufUnavailable("Timed out waiting for moss-tts-server /health")
+
+        if force_restart or not health_ok(base, timeout=1.0):
+            status("Restarting MOSS GGUF server...")
+            _kill_servers()
+            time.sleep(1.0)
+
+        server = resolve_server_exe()
+        model = resolve_model()
+        # Sidecar must sit beside the backbone as <stem>.extras.gguf
+        extras = model.with_name(model.name.replace(".gguf", ".extras.gguf"))
+        if not extras.is_file():
+            raise MossGgufUnavailable(
+                f"Missing sidecar {extras.name} next to {model.name}. "
+                "Both GGUF files from the HF repo are required."
+            )
+
+        status(f"Starting MOSS GGUF server ({server.name})...")
+        DEFAULT_ROOT.mkdir(parents=True, exist_ok=True)
+        err_f = open(_ERR_LOG, "ab", buffering=0)  # noqa: SIM115
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        env = os.environ.copy()
+        env["PATH"] = str(server.parent) + os.pathsep + env.get("PATH", "")
+        _PROC = subprocess.Popen(
+            [
+                str(server),
+                "--model",
+                str(model),
+                "--host",
+                DEFAULT_HOST,
+                "--port",
+                str(port),
+                "--n-gpu-layers",
+                "-1",
+            ],
+            cwd=str(server.parent),
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=err_f,
+            creationflags=creationflags,
+        )
+        deadline = time.time() + 180
+        while time.time() < deadline:
+            if _PROC.poll() is not None:
+                raise MossGgufUnavailable(
+                    f"moss-tts-server exited early (code {_PROC.returncode}). "
+                    f"See {_ERR_LOG}"
+                )
+            if health_ok(base, timeout=1.5):
+                _BASE_URL = base
+                status("MOSS GGUF server ready")
+                return base
+            time.sleep(1.0)
+        raise MossGgufUnavailable(
+            f"Timed out waiting for moss-tts-server /health. See {_ERR_LOG}"
+        )
 
 
-def generate(
+def _post_sfx(
+    base: str,
     prompt: str,
-    seconds: float = 4.0,
-    steps: int = 20,
-    cfg_scale: float = 4.0,
-    negative_prompt: str = "",  # noqa: ARG001
-    status_cb: StatusCb = None,
-    sigma_shift: float = 5.0,
-    seed: int = -1,
-) -> Path:
-    def status(msg: str) -> None:
-        if status_cb:
-            status_cb(msg)
-
-    base = ensure_server(status_cb=status_cb)
-    status(f"MOSS GGUF generating ({float(seconds):.1f}s, {int(steps)} steps)...")
+    seconds: float,
+    steps: int,
+    cfg_scale: float,
+    sigma_shift: float,
+    seed: int,
+) -> bytes:
     body: dict = {
         "text": prompt,
         "seconds": float(seconds),
@@ -237,21 +256,68 @@ def generate(
         },
         method="POST",
     )
+    with urllib.request.urlopen(req, timeout=900) as resp:
+        return resp.read()
+
+
+def generate(
+    prompt: str,
+    seconds: float = 4.0,
+    steps: int = 12,
+    cfg_scale: float = 4.0,
+    negative_prompt: str = "",  # noqa: ARG001
+    status_cb: StatusCb = None,
+    sigma_shift: float = 5.0,
+    seed: int = -1,
+) -> Path:
+    def status(msg: str) -> None:
+        if status_cb:
+            status_cb(msg)
+
+    if not _GEN_LOCK.acquire(blocking=False):
+        raise MossGgufUnavailable(
+            "MOSS GGUF is already generating. Wait for it to finish "
+            "(decode often takes 1–2+ minutes)."
+        )
     try:
-        with urllib.request.urlopen(req, timeout=900) as resp:
-            wav_bytes = resp.read()
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", errors="replace")[:400]
-        raise MossGgufUnavailable(f"MOSS GGUF /sfx failed ({e.code}): {detail}") from e
-    except Exception as e:  # noqa: BLE001
-        raise MossGgufUnavailable(f"MOSS GGUF request failed: {e}") from e
+        base = ensure_server(status_cb=status_cb)
+        status(
+            f"MOSS GGUF generating ({float(seconds):.1f}s, {int(steps)} steps) — "
+            "decode is slow, leave it alone..."
+        )
+        try:
+            wav_bytes = _post_sfx(
+                base, prompt, seconds, steps, cfg_scale, sigma_shift, seed
+            )
+        except (ConnectionResetError, urllib.error.URLError, TimeoutError) as e:
+            # Server often dies mid-decode if VRAM is contested or a second
+            # /sfx hits the single-threaded process.
+            status("MOSS GGUF server dropped — restarting once and retrying...")
+            base = ensure_server(status_cb=status_cb, force_restart=True)
+            try:
+                wav_bytes = _post_sfx(
+                    base, prompt, seconds, steps, cfg_scale, sigma_shift, seed
+                )
+            except Exception as e2:  # noqa: BLE001
+                raise MossGgufUnavailable(
+                    f"MOSS GGUF request failed after restart: {e2}. "
+                    "Unload SA3/MOSS first (free VRAM), use fewer steps, "
+                    f"and check {_ERR_LOG}. First error: {e}"
+                ) from e2
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", errors="replace")[:400]
+            raise MossGgufUnavailable(
+                f"MOSS GGUF /sfx failed ({e.code}): {detail}"
+            ) from e
 
-    if not wav_bytes or len(wav_bytes) < 44:
-        raise MossGgufUnavailable("MOSS GGUF returned empty/invalid WAV")
+        if not wav_bytes or len(wav_bytes) < 44:
+            raise MossGgufUnavailable("MOSS GGUF returned empty/invalid WAV")
 
-    fd, tmp = tempfile.mkstemp(suffix=".wav", prefix="sfxdesk_gguf_")
-    os.close(fd)
-    path = Path(tmp)
-    path.write_bytes(wav_bytes)
-    status(f"MOSS GGUF done ({len(wav_bytes)} bytes)")
-    return path
+        fd, tmp = tempfile.mkstemp(suffix=".wav", prefix="sfxdesk_gguf_")
+        os.close(fd)
+        path = Path(tmp)
+        path.write_bytes(wav_bytes)
+        status(f"MOSS GGUF done ({len(wav_bytes)} bytes)")
+        return path
+    finally:
+        _GEN_LOCK.release()
