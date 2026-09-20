@@ -1,4 +1,4 @@
-# SFX Desk
+﻿# SFX Desk
 
 Always-on-top desktop SFX generator for **DaVinci Resolve** (free or Studio).
 
@@ -24,7 +24,7 @@ SA3 Small-SFX is the daily driver (~2-4 GB VRAM). MOSS is optional and wants ~16
 
 Local **SA3 Small-SFX** gens from this desk.
 
-**Play them here:** [SFX Desk example sounds](https://darcyallen-tech.github.io/sfx-desk/) (GitHub Pages — real audio players).
+**Play them here:** [SFX Desk example sounds](https://darcyallen-tech.github.io/sfx-desk/) (GitHub Pages â€” real audio players).
 
 GitHub's README often won't render <audio> reliably; use the Pages link above. Download links remain below as backup.
 
@@ -114,7 +114,7 @@ Type / texture / space / speed drive the prompt; duration sets length. Hotkeys: 
    - Creates `.venv`  
    - Installs PyTorch CUDA + SA3  
    - Opens the SA3 license page  
-   - Runs **`hf auth login`** — prefer the **browser** option, or paste a **read** token from [HF tokens](https://huggingface.co/settings/tokens)  
+   - Runs **`hf auth login`** â€” prefer the **browser** option, or paste a **read** token from [HF tokens](https://huggingface.co/settings/tokens)  
    - Use **your** Hugging Face account. Never commit a token.
 4. Accept the gated model license:  
    https://huggingface.co/stabilityai/stable-audio-3-small-sfx
@@ -124,25 +124,31 @@ More detail: [SETUP.md](SETUP.md)
 
 ---
 
+
+### Updates
+
+SFX Desk quietly checks [GitHub Releases](https://github.com/darcyallen-tech/sfx-desk/releases) for a newer version (at most every 12 hours). If one is available, the status line says so â€” click it to open the release page. Update by downloading the new ZIP (or `git pull`) and re-running `scripts\setup_windows.bat` if dependencies changed. The header **â†»** button forces a check now.
+
+
 ## Engines
 
 | Engine | VRAM | Role |
 |--------|------|------|
-| **SA3 Small-SFX** (default) | ~2–4 GB | Daily driver — fine with Resolve open |
-| **MOSS-SoundEffect v2** | ~13–14 GB alone | Optional quality; see VRAM rules |
+| **SA3 Small-SFX** (default) | ~2â€“4 GB | Daily driver â€” fine with Resolve open |
+| **MOSS-SoundEffect v2** | ~13â€“14 GB alone | Optional quality; see VRAM rules |
 
 ### MOSS VRAM (plain English)
 
 - **Under 16 GB:** MOSS locked (optional **Force MOSS**). Use SA3.
-- **~16 GB:** Close Resolve → generate → **Unload** → open Resolve → **Send**.
-- **~20–24 GB:** Comfortable with Resolve open + MOSS kept loaded.
+- **~16 GB:** Close Resolve â†’ generate â†’ **Unload** â†’ open Resolve â†’ **Send**.
+- **~20â€“24 GB:** Comfortable with Resolve open + MOSS kept loaded.
 
 ---
 
 ## Resolve Send
 
 Works on **free Resolve and Studio**.  
-Preferences → System → General → **External scripting: Local**.  
+Preferences â†’ System â†’ General â†’ **External scripting: Local**.  
 Imports into Media Pool bin `SFX Desk` only (no timeline drop). Multi-select supported.
 
 ---
@@ -154,12 +160,12 @@ Imports into Media Pool bin `SFX Desk` only (no timeline drop). Multi-select sup
 - Local library / WAVs / `settings.json`  
 - A paid unlock  
 
-Everyone brings their own HF account and accepts Stability’s license themselves.
+Everyone brings their own HF account and accepts Stabilityâ€™s license themselves.
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).  
+MIT â€” see [LICENSE](LICENSE).  
 Third-party models (SA3, MOSS) have their **own** licenses; you must accept those on Hugging Face.
 

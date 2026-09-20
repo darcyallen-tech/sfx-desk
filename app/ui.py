@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import threading
+import webbrowser
+from datetime import datetime, timezone
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox
@@ -22,7 +24,9 @@ from app.prompt_builder import (
     default_negative_prompt,
     migrate_space_mic,
 )
+from app import __version__
 from app import settings as prefs
+from app.update_check import check_for_update
 from app.setup_check import SA3_LICENSE_URL, check_setup
 
 try:
@@ -50,7 +54,7 @@ SKINNY_SIZE = "340x405"
 class SfxDeskApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("SFX Desk")
+        self.title(f"SFX Desk {__version__}")
         self._cfg = prefs.load()
 
         self.geometry(str(self._cfg.get("geometry") or FAT_SIZE))
@@ -73,6 +77,7 @@ class SfxDeskApp(ctk.CTk):
         self.clip_rows: list[dict] = []
         self._fat_geometry = str(self._cfg.get("geometry") or FAT_SIZE)
         self._skinny_geometry = str(self._cfg.get("skinny_geometry") or SKINNY_SIZE)
+        self._update_url: str | None = None
 
         self._build()
         self._apply_saved_builder()
@@ -86,6 +91,7 @@ class SfxDeskApp(ctk.CTk):
         self.after(100, self._force_geometry)
         self.after(150, self._boot_vram_status)
         self.after(400, self._maybe_setup_nudge)
+        self.after(2500, lambda: self._schedule_update_check(force=False))
 
     def _force_geometry(self) -> None:
         geo = self._skinny_geometry if self.skinny.get() else self._fat_geometry
@@ -123,6 +129,16 @@ class SfxDeskApp(ctk.CTk):
         ctk.CTkLabel(top, text="SFX Desk", font=ctk.CTkFont(size=14, weight="bold")).pack(
             side="left", padx=4
         )
+        ctk.CTkLabel(
+            top, text=f"v{__version__}", font=ctk.CTkFont(size=10), text_color="gray"
+        ).pack(side="left", padx=(0, 4))
+        ctk.CTkButton(
+            top,
+            text="Check",
+            width=28,
+            height=24,
+            command=lambda: self._schedule_update_check(force=True),
+        ).pack(side="left", padx=2)
         ctk.CTkCheckBox(
             top, text="Skinny", variable=self.skinny, command=self._toggle_skinny, width=70
         ).pack(side="right", padx=2)
@@ -237,8 +253,11 @@ class SfxDeskApp(ctk.CTk):
             anchor="w",
             font=tiny,
             height=18,
+            cursor="hand2",
         )
         self.status.pack(fill="x", padx=8, pady=(0, 2))
+        self.status.bind("<Button-1>", self._on_status_click)
+        self.status.bind("<Button-3>", lambda _e: self._schedule_update_check(force=True))
 
         self.lib_frame = ctk.CTkFrame(self)
         self.lib_frame.pack(fill="both", expand=True, padx=6, pady=(2, 6))
@@ -434,12 +453,67 @@ class SfxDeskApp(ctk.CTk):
             "prompt_height": int(getattr(self, "_prompt_height", 72)),
             "category": self.cat.get(),
             "fav_only": bool(self.fav_only.get()),
+            "check_updates": bool(self._cfg.get("check_updates", True)),
+            "skipped_update": str(self._cfg.get("skipped_update", "")),
+            "last_update_check": str(self._cfg.get("last_update_check", "")),
         }
 
     def _on_close(self) -> None:
         prefs.save(self._collect_settings())
         self.destroy()
 
+
+
+    def _schedule_update_check(self, force: bool = False) -> None:
+        if not force and not bool(self._cfg.get("check_updates", True)):
+            return
+        if not force:
+            last = str(self._cfg.get("last_update_check") or "")
+            if last:
+                try:
+                    prev = datetime.fromisoformat(last)
+                    if prev.tzinfo is None:
+                        prev = prev.replace(tzinfo=timezone.utc)
+                    age = datetime.now(timezone.utc) - prev
+                    if age.total_seconds() < 12 * 3600:
+                        return
+                except Exception:
+                    pass
+        if force:
+            self._set_status("Checking for updates...")
+
+        def work() -> None:
+            info = check_for_update(__version__)
+            self.after(0, lambda: self._on_update_result(info, force=force))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _on_update_result(self, info, force: bool = False) -> None:
+        now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+        self._cfg["last_update_check"] = now
+        try:
+            prefs.save(self._collect_settings())
+        except Exception:
+            pass
+        if info is None:
+            self._update_url = None
+            if force:
+                self._set_status(f"Up to date (v{__version__})")
+            return
+        skipped = str(self._cfg.get("skipped_update") or "")
+        tag = str(getattr(info, "tag", "") or "")
+        if tag and tag.lstrip("v") == skipped.lstrip("v") and not force:
+            return
+        self._update_url = info.html_url
+        self._set_status(f"Update {tag} available - click status to open")
+
+    def _on_status_click(self, _event=None) -> None:
+        url = getattr(self, "_update_url", None)
+        if url:
+            try:
+                webbrowser.open(url)
+            except Exception:
+                pass
 
     def _maybe_setup_nudge(self) -> None:
         try:

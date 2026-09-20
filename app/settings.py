@@ -20,10 +20,19 @@ DEFAULTS: dict[str, Any] = {
     "kind": "whoosh",
     "texture": "airy",
     "space": "dry",
+    "mic": "natural",
     "speed": "fast",
+    "intensity": "medium",
+    "extra": "",
+    "prompt_height": 72,
     "category": "all",
     "fav_only": False,
+    "check_updates": True,
+    "skipped_update": "",
+    "last_update_check": "",
 }
+
+_ENGINE_ALLOWLIST = ("SA3 Small-SFX", "MOSS v2")
 
 
 def _sanitize_geometry(value: str, fallback: str) -> str:
@@ -54,9 +63,8 @@ def load() -> dict[str, Any]:
     data["skinny_geometry"] = _sanitize_geometry(
         str(data.get("skinny_geometry")), DEFAULTS["skinny_geometry"]
     )
-    # Always default engine label to SA3 if unknown / old MOSS-only preference without unlock handled in UI
     eng = str(data.get("engine") or DEFAULTS["engine"])
-    if eng not in ("SA3 Small-SFX", "MOSS v2"):
+    if eng not in _ENGINE_ALLOWLIST:
         data["engine"] = DEFAULTS["engine"]
     return data
 
