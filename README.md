@@ -136,6 +136,7 @@ SFX Desk quietly checks [GitHub Releases](https://github.com/darcyallen-tech/sfx
 |--------|------|------|
 | **SA3 Small-SFX** (default) | ~2â€“4 GB | Daily driver â€” fine with Resolve open |
 | **MOSS-SoundEffect v2** | ~13â€“14 GB alone | Optional quality; see VRAM rules |
+| **Woosh DFlow** | ~10 GB+ | Distilled T2A (4 steps); CC BY-NC weights |
 
 ### MOSS VRAM (plain English)
 
@@ -156,6 +157,25 @@ Optional quality engine via openmoss `moss-tts-server` + GGUF weights. Needs **~
 4. **Unload** kills `moss-tts-server.exe` to free VRAM.
 
 Override paths with settings keys `moss_gguf_server` / `moss_gguf_model` / `moss_gguf_port`, or env `SFX_DESK_MOSS_GGUF_SERVER`, `SFX_DESK_MOSS_GGUF_MODEL`, `SFX_DESK_MOSS_GGUF_PORT`.
+
+
+## Woosh DFlow (Sony distilled T2A)
+
+Optional free-text T2A engine using Sony Research **Woosh-DFlow** (4 Euler steps). SA3 stays the default.
+
+1. Run **`scripts\setup_woosh.bat`** (installs the `woosh` package into `.venv`).
+2. Run **`scripts\download_woosh_weights.bat`** — pulls ~3.7 GB into `%USERPROFILE%\woosh-models\checkpoints\`:
+   - `Woosh-AE`, `TextConditionerA`, `Woosh-DFlow` (skip VFlow / DVFlow / CLAP for now).
+3. In SFX Desk pick **Woosh DFlow**. First Generate lazy-loads; **Unload** frees VRAM.
+4. Override root with settings key `woosh_models_root` or env `SFX_DESK_WOOSH_ROOT`.
+
+Prompt recipe: free-text **event + source + space** (builder already emits this for non-SA3). CFG default 4.0 (distilled demos ~1.0–4.5). Default duration ~4–5 s.
+
+**License:** model weights are **CC BY-NC 4.0** (Sony). Local personal use is fine; do **not** ship commercial products that depend on the weights or their outputs. App code remains MIT.
+
+Mirror: [AEmotionStudio/woosh-models](https://huggingface.co/AEmotionStudio/woosh-models) · Upstream: [SonyResearch/Woosh](https://github.com/SonyResearch/Woosh)
+
+---
 
 ## Resolve Send
 
@@ -179,5 +199,5 @@ Everyone brings their own HF account and accepts Stabilityâ€™s license them
 ## License
 
 MIT â€” see [LICENSE](LICENSE).  
-Third-party models (SA3, MOSS) have their **own** licenses; you must accept those on Hugging Face.
+Third-party models (SA3, MOSS, Woosh) have their **own** licenses; you must accept those on Hugging Face / upstream. Woosh weights are **CC BY-NC 4.0**.
 

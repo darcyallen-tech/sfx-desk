@@ -19,6 +19,7 @@ DEFAULTS: dict[str, Any] = {
     "moss_gguf_server": "",
     "moss_gguf_model": "",
     "moss_gguf_port": 8765,
+    "woosh_models_root": "",
     "duration": 4.0,
     "kind": "whoosh",
     "texture": "airy",
@@ -35,7 +36,7 @@ DEFAULTS: dict[str, Any] = {
     "last_update_check": "",
 }
 
-_ENGINE_ALLOWLIST = ("SA3 Small-SFX", "MOSS v2", "MOSS GGUF (SLOWER)")
+_ENGINE_ALLOWLIST = ("SA3 Small-SFX", "MOSS v2", "Woosh DFlow")
 
 
 def _sanitize_geometry(value: str, fallback: str) -> str:
@@ -67,7 +68,7 @@ def load() -> dict[str, Any]:
         str(data.get("skinny_geometry")), DEFAULTS["skinny_geometry"]
     )
     eng = str(data.get("engine") or DEFAULTS["engine"])
-    if eng not in _ENGINE_ALLOWLIST:
+    if eng == "MOSS GGUF (SLOWER)" or eng not in _ENGINE_ALLOWLIST:
         data["engine"] = DEFAULTS["engine"]
     return data
 

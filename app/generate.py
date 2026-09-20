@@ -1,4 +1,4 @@
-"""Multi-engine SFX generation (MOSS v2 + SA3 Small-SFX + MOSS GGUF)."""
+"""Multi-engine SFX generation (SA3 + MOSS + MOSS GGUF + Woosh DFlow)."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -12,15 +12,16 @@ ENGINES = {
     "moss": "MOSS-SoundEffect v2 (quality)",
     "sa3": "Stable Audio 3 Small-SFX (light VRAM)",
     "moss_gguf": "MOSS-SoundEffect GGUF (slower, ~12GB+)",
+    "woosh_dflow": "Woosh DFlow (distilled T2A)",
 }
 
 # Default steps per engine
-DEFAULT_STEPS = {"moss": 50, "sa3": 8, "moss_gguf": 12}
-DEFAULT_CFG = {"moss": 4.0, "sa3": 1.0, "moss_gguf": 4.0}
+DEFAULT_STEPS = {"moss": 50, "sa3": 8, "moss_gguf": 12, "woosh_dflow": 4}
+DEFAULT_CFG = {"moss": 4.0, "sa3": 1.0, "moss_gguf": 4.0, "woosh_dflow": 4.0}
 
 
 def unload_torch_engines() -> str:
-    """Unload SA3/MOSS torch weights and clear CUDA.
+    """Unload SA3/MOSS/Woosh torch weights and clear CUDA.
 
     Call on the UI/main thread before starting a GGUF worker.
     Does not touch moss-tts-server.
@@ -38,6 +39,12 @@ def unload_torch_engines() -> str:
         msgs.append(sa3_sfx.unload())
     except Exception as e:  # noqa: BLE001
         msgs.append(f"SA3 unload: {e}")
+    try:
+        from app.engines import woosh_dflow
+
+        msgs.append(woosh_dflow.unload())
+    except Exception as e:  # noqa: BLE001
+        msgs.append(f"Woosh unload: {e}")
     msgs.append(empty_cuda_cache())
     return " | ".join(msgs)
 
@@ -66,6 +73,12 @@ def unload_all() -> str:
         msgs.append(sa3_sfx.unload())
     except Exception as e:  # noqa: BLE001
         msgs.append(f"SA3 unload: {e}")
+    try:
+        from app.engines import woosh_dflow
+
+        msgs.append(woosh_dflow.unload())
+    except Exception as e:  # noqa: BLE001
+        msgs.append(f"Woosh unload: {e}")
     msgs.append(unload_gguf_server())
     msgs.append(empty_cuda_cache())
     return " | ".join(msgs)
@@ -114,6 +127,17 @@ def generate_sfx(
             # here while moss-tts-server owns the GPU causes ACCESS_VIOLATION
             # (0xC0000005) in python312.dll during CUDA graph warmup.
             path = moss_gguf.generate(
+                prompt,
+                seconds=seconds,
+                steps=int(steps),
+                cfg_scale=float(cfg_scale),
+                negative_prompt=negative_prompt,
+                status_cb=status_cb,
+            )
+        elif engine == "woosh_dflow":
+            from app.engines import woosh_dflow
+
+            path = woosh_dflow.generate(
                 prompt,
                 seconds=seconds,
                 steps=int(steps),

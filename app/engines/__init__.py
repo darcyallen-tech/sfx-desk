@@ -1,1 +1,1 @@
-"""SFX generation engines (MOSS v2, SA3 Small-SFX, MOSS GGUF)."""
+"""SFX generation engines (SA3, MOSS, MOSS GGUF, Woosh DFlow)."""

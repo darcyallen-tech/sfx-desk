@@ -75,6 +75,15 @@ MOSS is **not** installed by the default setup. It needs ~16 GB VRAM minimum and
 On 16 GB cards: close Resolve while generating, then Unload, then Send.  
 ~24 GB is comfortable with Resolve open.
 
+## Optional: Woosh DFlow
+
+1. `scripts\setup_woosh.bat` — installs Sony `woosh` into `.venv`
+2. `scripts\download_woosh_weights.bat` — ~3.7 GB under `%USERPROFILE%\woosh-models\checkpoints\`
+3. Launch desk → pick **Woosh DFlow** → Generate a short whoosh
+4. Unload should drop VRAM (check Task Manager / `nvidia-smi`)
+
+Weights: CC BY-NC 4.0. See README.
+
 ## Troubleshooting
 
 | Problem | Fix |

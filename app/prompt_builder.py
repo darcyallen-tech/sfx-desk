@@ -1,7 +1,8 @@
 """Assemble SFX prompts from builder axes.
 
-MOSS v2: free-form sensory captions (EN/ZH). Duration is a pipeline param.
+MOSS / Woosh DFlow: free-form sensory captions (event + source + space).
 SA3 Small-SFX: source + action + production; optional TrackType: SFX.
+Woosh: no SA3 TrackType tags — distilled demos use CFG ~1–4.5, 4 steps.
 """
 from __future__ import annotations
 

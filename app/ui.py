@@ -10,8 +10,14 @@ from tkinter import messagebox
 
 import customtkinter as ctk
 
-from app.engines.base import empty_cuda_cache, moss_gguf_vram_status, moss_vram_status, probe_vram
-from app.generate import DEFAULT_STEPS, generate_sfx, unload_all, unload_gguf_server, unload_torch_engines
+from app.engines.base import (
+    empty_cuda_cache,
+    moss_gguf_vram_status,
+    moss_vram_status,
+    probe_vram,
+    woosh_vram_status,
+)
+from app.generate import DEFAULT_CFG, DEFAULT_STEPS, generate_sfx, unload_all, unload_gguf_server, unload_torch_engines
 from app.library import SfxLibrary
 from app.prompt_builder import (
     INTENSITIES,
@@ -39,12 +45,13 @@ except Exception:  # pragma: no cover
 ENGINE_LABELS = [
     "SA3 Small-SFX",
     "MOSS v2",
-    "MOSS GGUF (SLOWER)",
+    "Woosh DFlow",
 ]
 ENGINE_KEYS = {
     "SA3 Small-SFX": "sa3",
     "MOSS v2": "moss",
     "MOSS GGUF (SLOWER)": "moss_gguf",
+    "Woosh DFlow": "woosh_dflow",
 }
 
 FAT_MIN = (300, 420)
@@ -74,6 +81,7 @@ class SfxDeskApp(ctk.CTk):
         self._vram_info = probe_vram()
         self._moss = moss_vram_status(force_enable=bool(self.moss_force.get()), info=self._vram_info)
         self._gguf = moss_gguf_vram_status(force_enable=False, info=self._vram_info)
+        self._woosh = woosh_vram_status(force_enable=False, info=self._vram_info)
         self.selected_id: int | None = None
         self.last_wav: Path | None = None
         self.busy = False
@@ -152,7 +160,7 @@ class SfxDeskApp(ctk.CTk):
         row = ctk.CTkFrame(self)
         row.pack(fill="x", **pad)
         self.engine = ctk.CTkOptionMenu(
-            row, values=ENGINE_LABELS, command=self._on_engine_change, width=168, height=26
+            row, values=ENGINE_LABELS, command=self._on_engine_change, width=178, height=26
         )
         eng = str(self._cfg.get("engine") or ENGINE_LABELS[0])
         self.engine.set(eng if eng in ENGINE_LABELS else ENGINE_LABELS[0])
@@ -445,6 +453,10 @@ class SfxDeskApp(ctk.CTk):
             "always_on_top": bool(self.always_on_top.get()),
             "auto_send": bool(self.auto_send.get()),
             "moss_force_enable": bool(self.moss_force.get()),
+            "moss_gguf_server": str(self._cfg.get("moss_gguf_server", "")),
+            "moss_gguf_model": str(self._cfg.get("moss_gguf_model", "")),
+            "moss_gguf_port": int(self._cfg.get("moss_gguf_port") or 8765),
+            "woosh_models_root": str(self._cfg.get("woosh_models_root", "")),
             "duration": float(self.duration.get()),
             "kind": self.kind.get(),
             "texture": self.texture.get(),
@@ -549,6 +561,7 @@ class SfxDeskApp(ctk.CTk):
             force_enable=bool(self.moss_force.get()), info=self._vram_info
         )
         self._gguf = moss_gguf_vram_status(force_enable=False, info=self._vram_info)
+        self._woosh = woosh_vram_status(force_enable=False, info=self._vram_info)
         try:
             if self._moss["enough"]:
                 self.moss_force_cb.pack_forget()
@@ -613,6 +626,15 @@ class SfxDeskApp(ctk.CTk):
             self.engine.set(ENGINE_LABELS[0])
             self._sync_prompt()
             return
+        if key == "woosh_dflow" and not getattr(self, "_woosh", {}).get("unlocked", True):
+            messagebox.showwarning(
+                "SFX Desk",
+                "Woosh DFlow needs ~10 GB VRAM.\n\n"
+                f"{getattr(self, '_woosh', {}).get('tip', '')}",
+            )
+            self.engine.set(ENGINE_LABELS[0])
+            self._sync_prompt()
+            return
         self._sync_prompt()
         if key == "moss":
             tip = self._moss.get("tip", "MOSS selected.")
@@ -622,6 +644,11 @@ class SfxDeskApp(ctk.CTk):
             tip = getattr(self, "_gguf", {}).get(
                 "tip",
                 "MOSS GGUF (SLOWER): quality option, often minutes per clip.",
+            )
+        elif key == "woosh_dflow":
+            tip = getattr(self, "_woosh", {}).get(
+                "tip",
+                "Woosh DFlow: distilled T2A, 4 steps, free-text prompts.",
             )
         else:
             tip = "SA3: ~1s gens, light VRAM. Fine with Resolve open."
@@ -704,18 +731,33 @@ class SfxDeskApp(ctk.CTk):
                 "Use SA3 Small-SFX for fast gens.",
             )
             return
+        if engine == "woosh_dflow" and not getattr(self, "_woosh", {}).get("unlocked", True):
+            messagebox.showwarning(
+                "SFX Desk",
+                "Woosh DFlow is locked - needs ~10 GB VRAM.\n"
+                "Use SA3 Small-SFX for fast gens.",
+            )
+            return
         keep = bool(self.keep_loaded.get())
         steps = DEFAULT_STEPS.get(engine, 50)
+        cfg_scale = DEFAULT_CFG.get(engine, 4.0)
 
         # GGUF: release torch CUDA on the UI thread BEFORE the worker starts
         # moss-tts-server. Never call torch.cuda / empty cache from the GGUF
         # worker — that races the server and AV-crashes python.exe.
         if engine == "moss_gguf":
-            self._set_status("Freeing SA3/MOSS VRAM for GGUF...")
+            self._set_status("Freeing SA3/MOSS/Woosh VRAM for GGUF...")
             try:
                 self._set_status(unload_torch_engines())
             except Exception as e:  # noqa: BLE001
                 self._set_status(f"Torch unload warning: {e}")
+            self.update_idletasks()
+        elif engine == "woosh_dflow":
+            # Stop GGUF server so Woosh can own the GPU; SA3/MOSS share torch.
+            try:
+                self._set_status(unload_gguf_server())
+            except Exception as e:  # noqa: BLE001
+                self._set_status(f"GGUF stop warning: {e}")
             self.update_idletasks()
 
         self.busy = True
@@ -734,6 +776,7 @@ class SfxDeskApp(ctk.CTk):
                     prompt,
                     seconds=seconds,
                     steps=steps,
+                    cfg_scale=cfg_scale,
                     negative_prompt=default_negative_prompt(),
                     engine=engine,
                     keep_loaded=keep,
