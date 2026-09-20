@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.2
+
+- **Fix hard crash (0xC0000005)** on MOSS GGUF Generate: unload SA3/MOSS and clear CUDA on the UI thread before the GGUF worker; never call torch.cuda / empty CUDA cache from the GGUF worker while moss-tts-server owns the GPU
+- After GGUF when Keep is off: stop moss-tts-server only (no torch CUDA from the worker)
+- **Lazy load:** models / moss-tts-server still start only on first Generate; stop GGUF server on app close so the next launch does not look pre-loaded (VRAM probe at startup is unchanged)
+
 ## 1.1.1
 
 - Harden MOSS GGUF: free SA3/MOSS VRAM before gen, single-flight lock, stderr log, one automatic restart/retry on connection reset

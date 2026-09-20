@@ -159,6 +159,7 @@ def unload() -> str:
 
 
 def ensure_server(status_cb: StatusCb = None, *, force_restart: bool = False) -> str:
+    """Start or reuse moss-tts-server. Call only from generate() — never at app startup."""
     global _PROC, _BASE_URL
     port = resolve_port()
     base = f"http://{DEFAULT_HOST}:{port}"

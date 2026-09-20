@@ -11,7 +11,7 @@ from tkinter import messagebox
 import customtkinter as ctk
 
 from app.engines.base import empty_cuda_cache, moss_gguf_vram_status, moss_vram_status, probe_vram
-from app.generate import DEFAULT_STEPS, generate_sfx, unload_all
+from app.generate import DEFAULT_STEPS, generate_sfx, unload_all, unload_gguf_server, unload_torch_engines
 from app.library import SfxLibrary
 from app.prompt_builder import (
     INTENSITIES,
@@ -463,6 +463,11 @@ class SfxDeskApp(ctk.CTk):
 
     def _on_close(self) -> None:
         prefs.save(self._collect_settings())
+        # Stop orphan moss-tts-server so next launch does not look pre-loaded.
+        try:
+            unload_gguf_server()
+        except Exception:
+            pass
         self.destroy()
 
 
@@ -701,6 +706,18 @@ class SfxDeskApp(ctk.CTk):
             return
         keep = bool(self.keep_loaded.get())
         steps = DEFAULT_STEPS.get(engine, 50)
+
+        # GGUF: release torch CUDA on the UI thread BEFORE the worker starts
+        # moss-tts-server. Never call torch.cuda / empty cache from the GGUF
+        # worker — that races the server and AV-crashes python.exe.
+        if engine == "moss_gguf":
+            self._set_status("Freeing SA3/MOSS VRAM for GGUF...")
+            try:
+                self._set_status(unload_torch_engines())
+            except Exception as e:  # noqa: BLE001
+                self._set_status(f"Torch unload warning: {e}")
+            self.update_idletasks()
+
         self.busy = True
         self.gen_btn.configure(state="disabled")
         self._set_status("Generating...")

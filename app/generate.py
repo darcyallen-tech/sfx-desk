@@ -19,23 +19,54 @@ DEFAULT_STEPS = {"moss": 50, "sa3": 8, "moss_gguf": 12}
 DEFAULT_CFG = {"moss": 4.0, "sa3": 1.0, "moss_gguf": 4.0}
 
 
-def unload_all() -> str:
-    msgs = []
+def unload_torch_engines() -> str:
+    """Unload SA3/MOSS torch weights and clear CUDA.
+
+    Call on the UI/main thread before starting a GGUF worker.
+    Does not touch moss-tts-server.
+    """
+    msgs: list[str] = []
     try:
         from app.engines import moss
+
         msgs.append(moss.unload())
     except Exception as e:  # noqa: BLE001
         msgs.append(f"MOSS unload: {e}")
     try:
         from app.engines import sa3_sfx
+
         msgs.append(sa3_sfx.unload())
     except Exception as e:  # noqa: BLE001
         msgs.append(f"SA3 unload: {e}")
+    msgs.append(empty_cuda_cache())
+    return " | ".join(msgs)
+
+
+def unload_gguf_server() -> str:
+    """Stop moss-tts-server only (no torch.cuda)."""
     try:
         from app.engines import moss_gguf
-        msgs.append(moss_gguf.unload())
+
+        return moss_gguf.unload()
     except Exception as e:  # noqa: BLE001
-        msgs.append(f"MOSS GGUF unload: {e}")
+        return f"MOSS GGUF unload: {e}"
+
+
+def unload_all() -> str:
+    msgs = []
+    try:
+        from app.engines import moss
+
+        msgs.append(moss.unload())
+    except Exception as e:  # noqa: BLE001
+        msgs.append(f"MOSS unload: {e}")
+    try:
+        from app.engines import sa3_sfx
+
+        msgs.append(sa3_sfx.unload())
+    except Exception as e:  # noqa: BLE001
+        msgs.append(f"SA3 unload: {e}")
+    msgs.append(unload_gguf_server())
     msgs.append(empty_cuda_cache())
     return " | ".join(msgs)
 
@@ -78,21 +109,10 @@ def generate_sfx(
         elif engine == "moss_gguf":
             from app.engines import moss_gguf
 
-            # Free torch engine VRAM before the GGUF server claims the GPU —
-            # contested VRAM is a common cause of moss-tts-server dying mid-/sfx.
-            status("Freeing SA3/MOSS VRAM for GGUF...")
-            try:
-                from app.engines import moss as _moss
-                _moss.unload()
-            except Exception:
-                pass
-            try:
-                from app.engines import sa3_sfx as _sa3
-                _sa3.unload()
-            except Exception:
-                pass
-            empty_cuda_cache()
-
+            # Torch unload + empty_cuda_cache must already have run on the
+            # UI/main thread before this worker started. Calling torch.cuda
+            # here while moss-tts-server owns the GPU causes ACCESS_VIOLATION
+            # (0xC0000005) in python312.dll during CUDA graph warmup.
             path = moss_gguf.generate(
                 prompt,
                 seconds=seconds,
@@ -115,6 +135,10 @@ def generate_sfx(
     finally:
         if not keep_loaded:
             status("Unloading model to free VRAM...")
-            unload_all()
+            if engine == "moss_gguf":
+                # Stop server only — no torch.cuda from the worker thread.
+                status(unload_gguf_server())
+            else:
+                unload_all()
 
     return path
