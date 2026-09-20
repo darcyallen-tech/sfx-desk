@@ -1,4 +1,4 @@
-"""Multi-engine SFX generation (MOSS v2 + SA3 Small-SFX)."""
+"""Multi-engine SFX generation (MOSS v2 + SA3 Small-SFX + MOSS GGUF)."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -11,11 +11,12 @@ StatusCb = Callable[[str], None] | None
 ENGINES = {
     "moss": "MOSS-SoundEffect v2 (quality)",
     "sa3": "Stable Audio 3 Small-SFX (light VRAM)",
+    "moss_gguf": "MOSS-SoundEffect GGUF (slower, ~12GB+)",
 }
 
 # Default steps per engine
-DEFAULT_STEPS = {"moss": 50, "sa3": 8}
-DEFAULT_CFG = {"moss": 4.0, "sa3": 1.0}
+DEFAULT_STEPS = {"moss": 50, "sa3": 8, "moss_gguf": 20}
+DEFAULT_CFG = {"moss": 4.0, "sa3": 1.0, "moss_gguf": 4.0}
 
 
 def unload_all() -> str:
@@ -30,6 +31,11 @@ def unload_all() -> str:
         msgs.append(sa3_sfx.unload())
     except Exception as e:  # noqa: BLE001
         msgs.append(f"SA3 unload: {e}")
+    try:
+        from app.engines import moss_gguf
+        msgs.append(moss_gguf.unload())
+    except Exception as e:  # noqa: BLE001
+        msgs.append(f"MOSS GGUF unload: {e}")
     msgs.append(empty_cuda_cache())
     return " | ".join(msgs)
 
@@ -62,6 +68,17 @@ def generate_sfx(
             from app.engines import moss
 
             path = moss.generate(
+                prompt,
+                seconds=seconds,
+                steps=int(steps),
+                cfg_scale=float(cfg_scale),
+                negative_prompt=negative_prompt,
+                status_cb=status_cb,
+            )
+        elif engine == "moss_gguf":
+            from app.engines import moss_gguf
+
+            path = moss_gguf.generate(
                 prompt,
                 seconds=seconds,
                 steps=int(steps),

@@ -10,7 +10,7 @@ from tkinter import messagebox
 
 import customtkinter as ctk
 
-from app.engines.base import empty_cuda_cache, moss_vram_status, probe_vram
+from app.engines.base import empty_cuda_cache, moss_gguf_vram_status, moss_vram_status, probe_vram
 from app.generate import DEFAULT_STEPS, generate_sfx, unload_all
 from app.library import SfxLibrary
 from app.prompt_builder import (
@@ -39,10 +39,12 @@ except Exception:  # pragma: no cover
 ENGINE_LABELS = [
     "SA3 Small-SFX",
     "MOSS v2",
+    "MOSS GGUF (SLOWER)",
 ]
 ENGINE_KEYS = {
     "SA3 Small-SFX": "sa3",
     "MOSS v2": "moss",
+    "MOSS GGUF (SLOWER)": "moss_gguf",
 }
 
 FAT_MIN = (300, 420)
@@ -71,6 +73,7 @@ class SfxDeskApp(ctk.CTk):
         self.moss_force = tk.BooleanVar(value=bool(self._cfg.get("moss_force_enable", False)))
         self._vram_info = probe_vram()
         self._moss = moss_vram_status(force_enable=bool(self.moss_force.get()), info=self._vram_info)
+        self._gguf = moss_gguf_vram_status(force_enable=False, info=self._vram_info)
         self.selected_id: int | None = None
         self.last_wav: Path | None = None
         self.busy = False
@@ -149,7 +152,7 @@ class SfxDeskApp(ctk.CTk):
         row = ctk.CTkFrame(self)
         row.pack(fill="x", **pad)
         self.engine = ctk.CTkOptionMenu(
-            row, values=ENGINE_LABELS, command=self._on_engine_change, width=130, height=26
+            row, values=ENGINE_LABELS, command=self._on_engine_change, width=168, height=26
         )
         eng = str(self._cfg.get("engine") or ENGINE_LABELS[0])
         self.engine.set(eng if eng in ENGINE_LABELS else ENGINE_LABELS[0])
@@ -540,6 +543,7 @@ class SfxDeskApp(ctk.CTk):
         self._moss = moss_vram_status(
             force_enable=bool(self.moss_force.get()), info=self._vram_info
         )
+        self._gguf = moss_gguf_vram_status(force_enable=False, info=self._vram_info)
         try:
             if self._moss["enough"]:
                 self.moss_force_cb.pack_forget()
@@ -550,7 +554,8 @@ class SfxDeskApp(ctk.CTk):
                     self.moss_force_cb.pack(side="left", padx=2)
         except Exception:
             pass
-        if self._engine_key() == "moss" and not self._moss["unlocked"]:
+        key = self._engine_key()
+        if key == "moss" and not self._moss["unlocked"]:
             self.engine.set(ENGINE_LABELS[0])
             self._sync_prompt()
         if announce:
@@ -594,11 +599,25 @@ class SfxDeskApp(ctk.CTk):
                 self._sync_prompt()
                 self._set_status(self._moss.get("tip", "Stay on SA3."))
                 return
+        if key == "moss_gguf" and not getattr(self, "_gguf", {}).get("unlocked", True):
+            messagebox.showwarning(
+                "SFX Desk",
+                "MOSS GGUF needs ~12 GB VRAM.\n\n"
+                f"{getattr(self, '_gguf', {}).get('tip', '')}",
+            )
+            self.engine.set(ENGINE_LABELS[0])
+            self._sync_prompt()
+            return
         self._sync_prompt()
         if key == "moss":
             tip = self._moss.get("tip", "MOSS selected.")
             if self._moss.get("forced"):
                 tip = "Force MOSS on - " + tip
+        elif key == "moss_gguf":
+            tip = getattr(self, "_gguf", {}).get(
+                "tip",
+                "MOSS GGUF (SLOWER): quality option, often minutes per clip.",
+            )
         else:
             tip = "SA3: ~1s gens, light VRAM. Fine with Resolve open."
         self._set_status(tip)
@@ -673,6 +692,13 @@ class SfxDeskApp(ctk.CTk):
                 "Use SA3 Small-SFX, or close Resolve and Force MOSS knowing the risk.",
             )
             return
+        if engine == "moss_gguf" and not getattr(self, "_gguf", {}).get("unlocked", True):
+            messagebox.showwarning(
+                "SFX Desk",
+                "MOSS GGUF is locked - needs ~12 GB VRAM.\n"
+                "Use SA3 Small-SFX for fast gens.",
+            )
+            return
         keep = bool(self.keep_loaded.get())
         steps = DEFAULT_STEPS.get(engine, 50)
         self.busy = True
@@ -680,6 +706,9 @@ class SfxDeskApp(ctk.CTk):
         self._set_status("Generating...")
 
         def work() -> None:
+            import time as _time
+
+            t0 = _time.perf_counter()
             try:
                 def cb(m: str) -> None:
                     self.after(0, lambda msg=m: self._set_status(msg))
@@ -693,19 +722,41 @@ class SfxDeskApp(ctk.CTk):
                     keep_loaded=keep,
                     status_cb=cb,
                 )
+                elapsed = _time.perf_counter() - t0
                 clip = self.library.add_clip(wav, prompt, category, duration=seconds)
                 self.last_wav = Path(clip["path"])
-                self.after(0, lambda: self._after_generate(clip))
+                self.after(0, lambda: self._after_generate(clip, elapsed))
             except Exception as e:  # noqa: BLE001
                 self.after(0, lambda err=e: self._generate_failed(err))
 
         threading.Thread(target=work, daemon=True).start()
 
-    def _after_generate(self, clip: dict) -> None:
+    def _format_elapsed(self, seconds: float) -> str:
+        if seconds < 1:
+            return f"{seconds * 1000:.0f} ms"
+        if seconds < 10:
+            return f"{seconds:.2f}s"
+        if seconds < 60:
+            return f"{seconds:.1f}s"
+        mins = int(seconds // 60)
+        rem = seconds - mins * 60
+        return f"{mins}m {rem:.0f}s"
+
+    def _after_generate(self, clip: dict, elapsed: float | None = None) -> None:
         self.busy = False
         self.gen_btn.configure(state="normal")
         kept = "kept loaded" if self.keep_loaded.get() else "unloaded"
-        self._set_status(f"Saved: {clip.get('filename')} ({kept})")
+        if elapsed is None:
+
+            self._set_status(f"Saved: {clip.get('filename')} ({kept})")
+
+        else:
+
+            self._set_status(
+
+                f"Saved: {clip.get('filename')} in {self._format_elapsed(elapsed)} ({kept})"
+
+            )
         self._refresh_library()
         self._play_path(clip["path"])
         if self.auto_send.get():

@@ -1,1 +1,1 @@
-"""SFX generation engines (MOSS v2, Stable Audio 3 Small-SFX)."""
+"""SFX generation engines (MOSS v2, SA3 Small-SFX, MOSS GGUF)."""

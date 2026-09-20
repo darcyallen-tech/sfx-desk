@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0
+
+- Optional **MOSS GGUF (SLOWER)** engine (~12 GB VRAM) via openmoss `moss-tts-server`
+- Status line shows generation elapsed time (e.g. `in 870 ms`)
+
 ## 1.0.0
 
 First public release of **SFX Desk** — always-on-top local SFX companion for DaVinci Resolve.

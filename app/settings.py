@@ -16,6 +16,9 @@ DEFAULTS: dict[str, Any] = {
     "always_on_top": True,
     "auto_send": False,
     "moss_force_enable": False,
+    "moss_gguf_server": "",
+    "moss_gguf_model": "",
+    "moss_gguf_port": 8765,
     "duration": 4.0,
     "kind": "whoosh",
     "texture": "airy",
@@ -32,7 +35,7 @@ DEFAULTS: dict[str, Any] = {
     "last_update_check": "",
 }
 
-_ENGINE_ALLOWLIST = ("SA3 Small-SFX", "MOSS v2")
+_ENGINE_ALLOWLIST = ("SA3 Small-SFX", "MOSS v2", "MOSS GGUF (SLOWER)")
 
 
 def _sanitize_geometry(value: str, fallback: str) -> str:

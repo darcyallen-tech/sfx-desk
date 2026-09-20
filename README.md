@@ -145,6 +145,18 @@ SFX Desk quietly checks [GitHub Releases](https://github.com/darcyallen-tech/sfx
 
 ---
 
+
+## MOSS GGUF (SLOWER)
+
+Optional quality engine via openmoss `moss-tts-server` + GGUF weights. Needs **~12 GB VRAM**. Much slower than SA3 (often minutes for a few seconds of audio) - use when you want the quality bump.
+
+1. Download the Windows CUDA `moss-tts-server` build and put `moss-tts-server.exe` (+ CUDA DLLs) in `%USERPROFILE%\moss-gguf-test\runtime\`.
+2. Download `moss-soundeffect-2.0.gguf` into `%USERPROFILE%\moss-gguf-test\weights\`.
+3. In SFX Desk, pick **MOSS GGUF (SLOWER)**. First gen starts the local server on `127.0.0.1:8765`.
+4. **Unload** kills `moss-tts-server.exe` to free VRAM.
+
+Override paths with settings keys `moss_gguf_server` / `moss_gguf_model` / `moss_gguf_port`, or env `SFX_DESK_MOSS_GGUF_SERVER`, `SFX_DESK_MOSS_GGUF_MODEL`, `SFX_DESK_MOSS_GGUF_PORT`.
+
 ## Resolve Send
 
 Works on **free Resolve and Studio**.  

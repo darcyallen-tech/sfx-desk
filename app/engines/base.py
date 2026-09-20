@@ -62,6 +62,7 @@ def save_wav_soundfile(path: Path, audio, sample_rate: int = 48000) -> None:
 
 MOSS_MIN_VRAM_GB = 16.0
 MOSS_COMFORT_VRAM_GB = 24.0
+GGUF_MIN_VRAM_GB = 12.0
 
 
 def probe_vram() -> dict:
@@ -151,3 +152,32 @@ def moss_vram_status(force_enable: bool = False, info: dict | None = None) -> di
         "min_gb": MOSS_MIN_VRAM_GB,
         "comfort_gb": MOSS_COMFORT_VRAM_GB,
     }
+
+
+def moss_gguf_vram_status(force_enable: bool = False, info: dict | None = None) -> dict:
+    """Whether MOSS GGUF should be offered. Needs ~12 GB."""
+    info = info if info is not None else probe_vram()
+    total = float(info.get("total_gb") or 0.0)
+    enough = bool(info.get("ok")) and round(total) >= int(GGUF_MIN_VRAM_GB)
+    unlocked = enough or bool(force_enable)
+    if not info.get("cuda"):
+        tip = "MOSS GGUF needs an NVIDIA GPU. Use SA3 Small-SFX."
+    elif not enough and not force_enable:
+        tip = (
+            f"MOSS GGUF needs ~{GGUF_MIN_VRAM_GB:.0f} GB VRAM (you have {total:.1f} GB). "
+            "SA3 is the daily driver; GGUF is the slow quality option."
+        )
+    else:
+        tip = (
+            f"MOSS GGUF OK at {total:.1f} GB - much slower than SA3 "
+            "(often minutes). Unload stops moss-tts-server."
+        )
+    return {
+        "info": info,
+        "enough": enough,
+        "unlocked": unlocked,
+        "forced": bool(force_enable) and not enough,
+        "tip": tip,
+        "min_gb": GGUF_MIN_VRAM_GB,
+    }
+
