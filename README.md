@@ -22,18 +22,49 @@ SA3 Small-SFX is the daily driver (~2-4 GB VRAM). MOSS is optional and wants ~16
 
 ## Example sounds
 
-Local SA3 gens from this desk (playable on GitHub):
+Local **SA3 Small-SFX** gens from this desk. Use the players below (fallback download links under each).
 
-| Type | Listen |
-|------|--------|
-| Riser | <audio controls src="docs/examples/riser.mp3"></audio> |
-| Swoosh | <audio controls src="docs/examples/swoosh.mp3"></audio> |
-| Hit | <audio controls src="docs/examples/hit.mp3"></audio> |
-| Rumble | <audio controls src="docs/examples/rumble.mp3"></audio> |
-| Faller | <audio controls src="docs/examples/faller.mp3"></audio> |
-| Ambience | <audio controls src="docs/examples/ambience.mp3"></audio> |
+### 1. Organic rumble (8s)
+Type: rumble · Tex: organic · Space: hall · Speed: fast
 
-Direct links: [riser](docs/examples/riser.mp3) · [swoosh](docs/examples/swoosh.mp3) · [hit](docs/examples/hit.mp3) · [rumble](docs/examples/rumble.mp3) · [faller](docs/examples/faller.mp3) · [ambience](docs/examples/ambience.mp3)
+<audio controls preload="none" src="docs/examples/rumble.mp3">Your browser does not support audio. [Download rumble.mp3](docs/examples/rumble.mp3)</audio>
+
+[Download](docs/examples/rumble.mp3)
+
+### 2. Metallic faller (12s)
+Type: faller · Tex: metallic · Space: outdoor · Speed: slow
+
+<audio controls preload="none" src="docs/examples/faller.mp3">Your browser does not support audio. [Download faller.mp3](docs/examples/faller.mp3)</audio>
+
+[Download](docs/examples/faller.mp3)
+
+### 3. Distorted impact (6s)
+Type: impact · Tex: distorted · Space: distant · Speed: medium
+
+<audio controls preload="none" src="docs/examples/impact.mp3">Your browser does not support audio. [Download impact.mp3](docs/examples/impact.mp3)</audio>
+
+[Download](docs/examples/impact.mp3)
+
+### 4. Cinematic swoosh (5s)
+Type: swoosh · Tex: cinematic · Space: roomy · Speed: fast
+
+<audio controls preload="none" src="docs/examples/swoosh.mp3">Your browser does not support audio. [Download swoosh.mp3](docs/examples/swoosh.mp3)</audio>
+
+[Download](docs/examples/swoosh.mp3)
+
+### 5. Sharp scrape (8s)
+Type: scrape · Tex: sharp · Space: dry · Speed: slow
+
+<audio controls preload="none" src="docs/examples/scrape.mp3">Your browser does not support audio. [Download scrape.mp3](docs/examples/scrape.mp3)</audio>
+
+[Download](docs/examples/scrape.mp3)
+
+### 6. Digital ambience (6s)
+Type: ambience · Tex: digital · Space: hall · Speed: medium
+
+<audio controls preload="none" src="docs/examples/ambience.mp3">Your browser does not support audio. [Download ambience.mp3](docs/examples/ambience.mp3)</audio>
+
+[Download](docs/examples/ambience.mp3)
 
 ---
 

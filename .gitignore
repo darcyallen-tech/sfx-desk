@@ -44,3 +44,6 @@ _write_scaffold.py
 _patch_*.py
 *.local.md
 
+
+docs/examples/_picks/
+
