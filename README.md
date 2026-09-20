@@ -20,6 +20,23 @@ SA3 Small-SFX is the daily driver (~2-4 GB VRAM). MOSS is optional and wants ~16
 
 ---
 
+## Example sounds
+
+Local SA3 gens from this desk (playable on GitHub):
+
+| Type | Listen |
+|------|--------|
+| Riser | <audio controls src="docs/examples/riser.mp3"></audio> |
+| Swoosh | <audio controls src="docs/examples/swoosh.mp3"></audio> |
+| Hit | <audio controls src="docs/examples/hit.mp3"></audio> |
+| Rumble | <audio controls src="docs/examples/rumble.mp3"></audio> |
+| Faller | <audio controls src="docs/examples/faller.mp3"></audio> |
+| Ambience | <audio controls src="docs/examples/ambience.mp3"></audio> |
+
+Direct links: [riser](docs/examples/riser.mp3) · [swoosh](docs/examples/swoosh.mp3) · [hit](docs/examples/hit.mp3) · [rumble](docs/examples/rumble.mp3) · [faller](docs/examples/faller.mp3) · [ambience](docs/examples/ambience.mp3)
+
+---
+
 ## Screenshots
 
 Always-on-top companion over DaVinci Resolve - generate, audition, then **Send** into the Media Pool bin SFX Desk (bin only, no timeline drop).
