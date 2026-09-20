@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -15,12 +15,13 @@ library/
 *.db
 *.wav
 *.mp3
+!docs/examples/*.mp3
 *.flac
 sfx_desk.log
 settings.json
 %USERPROFILE%/
 
-# Secrets / credentials — NEVER commit
+# Secrets / credentials � NEVER commit
 .env
 .env.*
 !.env.example
@@ -42,3 +43,4 @@ desktop.ini
 _write_scaffold.py
 _patch_*.py
 *.local.md
+
