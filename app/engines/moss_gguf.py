@@ -125,9 +125,48 @@ def is_loaded() -> bool:
     return health_ok()
 
 
+
+def _creationflags_no_window() -> int:
+    return int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
+
+
+def _exe_running() -> bool:
+    """True if moss-tts-server.exe is in the process list (no console flash)."""
+    try:
+        r = subprocess.run(
+            ["tasklist", "/FI", f"IMAGENAME eq {SERVER_EXE}", "/NH"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+            creationflags=_creationflags_no_window(),
+        )
+        out = (r.stdout or "").lower()
+        return SERVER_EXE.lower() in out
+    except Exception:
+        return False
+
+
+def server_active() -> bool:
+    """True if we track a live proc, health responds, or the exe is running."""
+    if _PROC is not None and _PROC.poll() is None:
+        return True
+    try:
+        if health_ok(timeout=0.4):
+            return True
+    except Exception:
+        pass
+    return _exe_running()
+
+
 def _kill_servers() -> None:
     global _PROC
-    if _PROC is not None and _PROC.poll() is None:
+    tracked_live = _PROC is not None and _PROC.poll() is None
+    if not tracked_live and not _exe_running():
+        # Nothing to kill — skip taskkill (avoids CMD flash on every Woosh gen).
+        _PROC = None
+        return
+    if tracked_live:
         try:
             _PROC.terminate()
             try:
@@ -137,22 +176,30 @@ def _kill_servers() -> None:
         except Exception:
             pass
         _PROC = None
-    try:
-        subprocess.run(
-            ["taskkill", "/F", "/IM", SERVER_EXE],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-    except Exception:
-        pass
+    # Orphan / stubborn process
+    if _exe_running():
+        try:
+            subprocess.run(
+                ["taskkill", "/F", "/IM", SERVER_EXE],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+                creationflags=_creationflags_no_window(),
+            )
+        except Exception:
+            pass
+
 
 
 def unload() -> str:
-    """Stop moss-tts-server so VRAM frees (Unload button)."""
-    global _BASE_URL
+    """Stop moss-tts-server so VRAM frees (Unload button / pre-Woosh)."""
+    global _PROC, _BASE_URL
     with _LOCK:
+        if not server_active():
+            _PROC = None
+            _BASE_URL = None
+            return "MOSS GGUF server already stopped"
         _kill_servers()
         _BASE_URL = None
     return "MOSS GGUF server stopped"

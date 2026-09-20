@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.5
+
+- Fix Woosh pre-gen CMD flash + 1-2s stutter: skip `taskkill` when moss-tts-server is not running, and pass `CREATE_NO_WINDOW` when a kill is needed.
+- Woosh generate path only calls GGUF unload when `server_active()` is true.
+
 ## 1.1.4
 
 - **Woosh DFlow** distilled T2A engine (free-text, 4 steps, CFG ~4). Peak ~6.3 GB VRAM on RTX 5070 Ti; cold ~12-16s, warm well under the 60s hard limit.

@@ -753,9 +753,12 @@ class SfxDeskApp(ctk.CTk):
                 self._set_status(f"Torch unload warning: {e}")
             self.update_idletasks()
         elif engine == "woosh_dflow":
-            # Stop GGUF server so Woosh can own the GPU; SA3/MOSS share torch.
+            # Stop GGUF server only when one is actually up (avoids taskkill CMD flash).
             try:
-                self._set_status(unload_gguf_server())
+                from app.engines import moss_gguf
+
+                if moss_gguf.server_active():
+                    self._set_status(unload_gguf_server())
             except Exception as e:  # noqa: BLE001
                 self._set_status(f"GGUF stop warning: {e}")
             self.update_idletasks()
