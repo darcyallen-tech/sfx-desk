@@ -1,5 +1,8 @@
-# Changelog
+﻿# Changelog
 
+## 1.2.1
+
+- Fix **Woosh Flow**: rebuild `woosh_flow.py` (was mangled — missing `_load` / `unload` / helpers). Mirrors DFlow structure; full Flow ODE at 50 steps / CFG 4.5.
 ## 1.2.0
 
 - **Woosh Flow** full T2A engine (50 steps, CFG 4.5, renoise 0.0). Soft VRAM gate ~10 GB; unloads DFlow when loading Flow and vice versa.
