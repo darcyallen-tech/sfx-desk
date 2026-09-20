@@ -1,4 +1,4 @@
-﻿# SFX Desk
+# SFX Desk
 
 Always-on-top desktop SFX generator for **DaVinci Resolve** (free or Studio).
 
@@ -7,6 +7,40 @@ Always-on-top desktop SFX generator for **DaVinci Resolve** (free or Studio).
 > **Donate (PayPal):** https://www.paypal.com/donate/?business=B8KD4347C4F9L&no_recurring=0&currency_code=CAD
 
 Supported path for v1: **Windows + NVIDIA CUDA**.
+
+---
+
+## Screenshots
+
+Always-on-top companion over DaVinci Resolve - generate, audition, then **Send** into the Media Pool bin SFX Desk (bin only, no timeline drop).
+
+### In Resolve
+
+![SFX Desk over Resolve Media Pool](docs/screenshots/01-resolve-overlay.jpg)
+
+![Skinny mode over Resolve](docs/screenshots/02-resolve-skinny.jpg)
+
+### App window
+
+| Full | Skinny |
+|------|--------|
+| ![Full UI](docs/screenshots/03-app-full.png) | ![Skinny UI](docs/screenshots/04-app-skinny.png) |
+
+### Prompt builder
+
+Type / texture / space / speed drive the prompt; duration sets length. Hotkeys: **Enter** generate, **Space** play, **S** send.
+
+| Type | Texture | Space | Speed |
+|------|---------|-------|-------|
+| ![Type](docs/screenshots/05-menu-type.png) | ![Tex](docs/screenshots/06-menu-tex.png) | ![Space](docs/screenshots/07-menu-space.png) | ![Speed](docs/screenshots/08-menu-speed.png) |
+
+### UI pieces
+
+![Header / model / Keep-Cache-Unload](docs/screenshots/09-section-header.png)
+
+![Generate controls](docs/screenshots/10-section-generate.png)
+
+![Library - multi-select, Fav / Play / Del, bin-only Send](docs/screenshots/11-section-library.png)
 
 ---
 
