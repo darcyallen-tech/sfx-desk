@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## 1.2.3
+
+- Fix **same-second filename collisions** on fast engines (DFlow ~0.1s): library filenames now include microseconds + optional seed, with a monotonic suffix if the path already exists. Batch Auto-send was reporting 8 while Resolve only saw 2–3 unique WAVs.
+- Auto-send status reports **unique** clip count and warns on path collisions.
+- `resolve_send` dedupes paths and raises if ImportMedia returns fewer items than unique paths.
 ## 1.2.2
 
 - Fix **Auto-send + batch**: send every clip in the batch to Resolve, not only the last one. Preview still plays the last clip; status notes Auto-sent N clips.
@@ -63,3 +68,4 @@ First public release of **SFX Desk** — always-on-top local SFX companion for D
 - Skinny + always-on-top modes, remembered prefs
 - Quiet GitHub Releases update check (status click opens the release page)
 - MIT license; bring your own Hugging Face account / model licenses
+

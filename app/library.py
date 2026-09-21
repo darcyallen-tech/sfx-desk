@@ -1,8 +1,9 @@
-"""Local SFX library with categories and favorites."""
+﻿"""Local SFX library with categories and favorites."""
 from __future__ import annotations
 
 import sqlite3
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -56,13 +57,27 @@ class SfxLibrary:
         category: str,
         duration: float | None = None,
         gen_elapsed: float | None = None,
+        seed: int | None = None,
     ) -> dict[str, Any]:
+        """Copy src WAV into the library with a collision-safe filename.
+
+        Fast engines (e.g. DFlow ~0.1s) can land multiple batch seeds in the
+        same wall-clock second. Filenames include milliseconds (and optional
+        seed) plus a monotonic suffix while the dest path already exists.
+        """
         category = (category or "misc").strip().lower()
         dest_dir = self.category_dir(category)
-        stamp = time.strftime("%Y%m%d_%H%M%S")
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")  # microsecond
         safe = "".join(c if c.isalnum() or c in "-_" else "-" for c in category)[:24]
-        filename = f"{safe}_{stamp}.wav"
+        seed_bit = f"_s{int(seed)}" if seed is not None and int(seed) >= 0 else ""
+        base = f"{safe}_{stamp}{seed_bit}"
+        filename = f"{base}.wav"
         dest = dest_dir / filename
+        n = 0
+        while dest.exists():
+            n += 1
+            filename = f"{base}_{n}.wav"
+            dest = dest_dir / filename
         dest.write_bytes(Path(src_wav).read_bytes())
         created = time.time()
         with self._connect() as conn:

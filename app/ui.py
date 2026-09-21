@@ -1,4 +1,4 @@
-"""SFX Desk main window — compact always-on-top companion."""
+﻿"""SFX Desk main window â€” compact always-on-top companion."""
 from __future__ import annotations
 
 import threading
@@ -558,7 +558,7 @@ class SfxDeskApp(ctk.CTk):
             return
         if st.ready_for_sa3:
             return
-        # One soft dialog — never stores tokens
+        # One soft dialog â€” never stores tokens
         msg = "Setup incomplete:\n\n" + "\n".join(f"- {m}" for m in st.messages[:5])
         msg += (
             "\n\nOpen the SA3 license page now?\n"
@@ -679,7 +679,7 @@ class SfxDeskApp(ctk.CTk):
         elif key == "woosh_flow":
             tip = getattr(self, "_woosh_flow", {}).get(
                 "tip",
-                "Woosh Flow: full T2A, 50 steps, CFG 4.5 (~10–12 GB).",
+                "Woosh Flow: full T2A, 50 steps, CFG 4.5 (~10â€“12 GB).",
             )
         else:
             tip = "SA3: ~1s gens, light VRAM. Fine with Resolve open."
@@ -782,7 +782,7 @@ class SfxDeskApp(ctk.CTk):
 
         # GGUF: release torch CUDA on the UI thread BEFORE the worker starts
         # moss-tts-server. Never call torch.cuda / empty cache from the GGUF
-        # worker — that races the server and AV-crashes python.exe.
+        # worker â€” that races the server and AV-crashes python.exe.
         if engine == "moss_gguf":
             self._set_status("Freeing SA3/MOSS/Woosh VRAM for GGUF...")
             try:
@@ -804,7 +804,7 @@ class SfxDeskApp(ctk.CTk):
         self.busy = True
         self.gen_btn.configure(state="disabled")
         batch_n = max(1, min(8, int(self.batch_count.get() or 1)))
-        self._set_status("Generating..." if batch_n == 1 else f"Batch 1/{batch_n}…")
+        self._set_status("Generating..." if batch_n == 1 else f"Batch 1/{batch_n}â€¦")
 
         def work() -> None:
             import time as _time
@@ -815,13 +815,13 @@ class SfxDeskApp(ctk.CTk):
             try:
                 for i in range(batch_n):
                     def cb(m: str, _i=i) -> None:
-                        prefix = "" if batch_n == 1 else f"Batch {_i + 1}/{batch_n}… "
+                        prefix = "" if batch_n == 1 else f"Batch {_i + 1}/{batch_n}â€¦ "
                         self.after(0, lambda msg=m, p=prefix: self._set_status(p + msg))
 
                     if batch_n > 1:
                         self.after(
                             0,
-                            lambda _i=i: self._set_status(f"Batch {_i + 1}/{batch_n}…"),
+                            lambda _i=i: self._set_status(f"Batch {_i + 1}/{batch_n}â€¦"),
                         )
                     seed = _random.randint(0, 2**31 - 1)
                     # Keep engine warm across the whole batch; unload only after last
@@ -841,7 +841,12 @@ class SfxDeskApp(ctk.CTk):
                     )
                     elapsed = _time.perf_counter() - t0
                     clip = self.library.add_clip(
-                        wav, prompt, category, duration=seconds, gen_elapsed=elapsed
+                        wav,
+                        prompt,
+                        category,
+                        duration=seconds,
+                        gen_elapsed=elapsed,
+                        seed=seed,
                     )
                     batch_clips.append(clip)
                     last_elapsed = elapsed
@@ -861,7 +866,7 @@ class SfxDeskApp(ctk.CTk):
     def _format_elapsed(self, seconds: float) -> str:
         """Human elapsed for status + library rows.
 
-        <10s → one decimal (1.2s); 10–59s → whole seconds (12s); ≥60s → 5m 51s.
+        <10s â†’ one decimal (1.2s); 10â€“59s â†’ whole seconds (12s); â‰¥60s â†’ 5m 51s.
         """
         seconds = float(seconds)
         if seconds < 10:
@@ -909,12 +914,22 @@ class SfxDeskApp(ctk.CTk):
         # Preview last clip only
         self._play_path(clip["path"])
         if self.auto_send.get():
-            paths = [Path(c["path"]) for c in clip_list if c.get("path")]
+            raw_paths = [Path(c["path"]) for c in clip_list if c.get("path")]
+            seen: set[str] = set()
+            paths: list[Path] = []
+            for p in raw_paths:
+                key = str(p.resolve()).lower() if p.exists() else str(p).lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                paths.append(p)
+            collided = len(raw_paths) - len(paths)
             self._send_paths(paths, quiet=True)
-            if len(paths) > 1:
-                self._set_status(
-                    f"Batch {batch_n}/{batch_n} done - Auto-sent {len(paths)} clips ({kept})"
-                )
+            if len(paths) > 1 or collided:
+                note = f"Auto-sent {len(paths)} unique clips"
+                if collided:
+                    note += f" (warn: {collided} path collisions)"
+                self._set_status(f"Batch {batch_n}/{batch_n} done - {note} ({kept})")
 
 
     def _generate_failed(self, err: Exception) -> None:
@@ -999,7 +1014,17 @@ class SfxDeskApp(ctk.CTk):
         self._play_path(clip["path"])
 
     def _send_paths(self, paths: list[Path], quiet: bool = False) -> None:
-        paths = [p for p in paths if p.exists()]
+        seen: set[str] = set()
+        unique: list[Path] = []
+        for p in paths:
+            if not p.exists():
+                continue
+            key = str(p.resolve()).lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(p)
+        paths = unique
         if not paths:
             if not quiet:
                 messagebox.showwarning("SFX Desk", "Select or generate a clip first.")
@@ -1024,3 +1049,4 @@ class SfxDeskApp(ctk.CTk):
         elif self.last_wav and self.last_wav.exists():
             paths = [self.last_wav]
         self._send_paths(paths, quiet=False)
+

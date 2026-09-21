@@ -68,11 +68,16 @@ def send_wavs_to_resolve(
     audio_track: int = 2,
 ) -> str:
     """Import one or more WAVs into Media Pool bin; optionally append to timeline."""
+    seen: set[str] = set()
     paths: list[Path] = []
     for p in wav_paths:
         path = Path(p).resolve()
         if not path.exists():
             raise FileNotFoundError(path)
+        key = str(path).lower()
+        if key in seen:
+            continue
+        seen.add(key)
         paths.append(path)
     if not paths:
         raise ValueError("No WAV paths to import.")
@@ -90,9 +95,14 @@ def send_wavs_to_resolve(
         folder = media_pool.AddSubFolder(root, bin_name) or root
     media_pool.SetCurrentFolder(folder)
 
-    items = media_pool.ImportMedia([str(p) for p in paths])
+    items = media_pool.ImportMedia([str(p) for p in paths]) or []
     if not items:
         raise RuntimeError(f"ImportMedia failed: {[p.name for p in paths]}")
+    if len(items) != len(paths):
+        raise RuntimeError(
+            f"ImportMedia returned {len(items)} items for {len(paths)} unique paths "
+            f"(possible filename collision on disk): {[p.name for p in paths]}"
+        )
 
     names = ", ".join(p.name for p in paths)
     if len(paths) == 1:
@@ -121,3 +131,4 @@ def send_wavs_to_resolve(
         else:
             msg += " (Media Pool only — append failed)"
     return msg
+
