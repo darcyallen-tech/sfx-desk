@@ -810,7 +810,7 @@ class SfxDeskApp(ctk.CTk):
             import time as _time
             import random as _random
 
-            last_clip = None
+            batch_clips: list[dict] = []
             last_elapsed = None
             try:
                 for i in range(batch_n):
@@ -843,12 +843,16 @@ class SfxDeskApp(ctk.CTk):
                     clip = self.library.add_clip(
                         wav, prompt, category, duration=seconds, gen_elapsed=elapsed
                     )
-                    last_clip = clip
+                    batch_clips.append(clip)
                     last_elapsed = elapsed
                     self.last_wav = Path(clip["path"])
                     # Refresh library after each seed so rows appear live
                     self.after(0, self._refresh_library)
-                self.after(0, lambda: self._after_generate(last_clip, last_elapsed, batch_n=batch_n))
+                clips = list(batch_clips)
+                self.after(
+                    0,
+                    lambda c=clips, e=last_elapsed: self._after_generate(c, e, batch_n=batch_n),
+                )
             except Exception as e:  # noqa: BLE001
                 self.after(0, lambda err=e: self._generate_failed(err))
 
@@ -874,13 +878,23 @@ class SfxDeskApp(ctk.CTk):
         mins, rem = divmod(total, 60)
         return f"{mins}m {rem}s"
 
-    def _after_generate(self, clip: dict, elapsed: float | None = None, batch_n: int = 1) -> None:
+    def _after_generate(
+        self,
+        clips: dict | list[dict] | None,
+        elapsed: float | None = None,
+        batch_n: int = 1,
+    ) -> None:
         self.busy = False
         self.gen_btn.configure(state="normal")
         kept = "kept loaded" if self.keep_loaded.get() else "unloaded"
-        if clip is None:
+        if isinstance(clips, dict):
+            clip_list = [clips]
+        else:
+            clip_list = list(clips or [])
+        if not clip_list:
             self._set_status("Generate finished")
             return
+        clip = clip_list[-1]
         if elapsed is None:
             suffix = f"Saved: {clip.get('filename')} ({kept})"
         else:
@@ -888,13 +902,20 @@ class SfxDeskApp(ctk.CTk):
                 f"Saved: {clip.get('filename')} in {self._format_elapsed(elapsed)} ({kept})"
             )
         if batch_n > 1:
-            self._set_status(f"Batch {batch_n}/{batch_n} done — {suffix}")
+            self._set_status(f"Batch {batch_n}/{batch_n} done - {suffix}")
         else:
             self._set_status(suffix)
         self._refresh_library()
+        # Preview last clip only
         self._play_path(clip["path"])
         if self.auto_send.get():
-            self._send_paths([Path(clip["path"])], quiet=True)
+            paths = [Path(c["path"]) for c in clip_list if c.get("path")]
+            self._send_paths(paths, quiet=True)
+            if len(paths) > 1:
+                self._set_status(
+                    f"Batch {batch_n}/{batch_n} done - Auto-sent {len(paths)} clips ({kept})"
+                )
+
 
     def _generate_failed(self, err: Exception) -> None:
         self.busy = False

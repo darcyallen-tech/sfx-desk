@@ -1,5 +1,9 @@
 ﻿# Changelog
 
+## 1.2.2
+
+- Fix **Auto-send + batch**: send every clip in the batch to Resolve, not only the last one. Preview still plays the last clip; status notes Auto-sent N clips.
+
 ## 1.2.1
 
 - Fix **Woosh Flow**: rebuild `woosh_flow.py` (was mangled — missing `_load` / `unload` / helpers). Mirrors DFlow structure; full Flow ODE at 50 steps / CFG 4.5.
